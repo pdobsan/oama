@@ -11,7 +11,8 @@ where
 import Data.Aeson (FromJSON, ToJSON, encode, eitherDecode', eitherDecodeStrict)
 import Data.ByteString.Lazy.UTF8 qualified as BLU
 import Data.ByteString.UTF8 qualified as BSU
-import Data.Time.Clock.POSIX qualified as TX
+import Data.Time.Clock
+import Data.Time.Format
 import GHC.Generics (Generic)
 import MailCtl.Environment
 import MailCtl.Utilities (logger)
@@ -25,7 +26,7 @@ import System.Process qualified as P
 
 data RefreshRecord = RefreshRecord
   { access_token :: String
-  , expires_in   :: Float
+  , expires_in   :: NominalDiffTime
   , scope        :: String
   , token_type   :: String
   }
@@ -36,8 +37,8 @@ data OAuth2Record = OAuth2Record
   , registration  :: String
   , authflow      :: String
   , refresh_token :: String
-  , access_token' :: String
-  , expires_at    :: Float
+  , accessToken   :: String
+  , expires_at    :: String
   }
   deriving (Show, Generic, ToJSON, FromJSON)
 
@@ -70,20 +71,23 @@ writeOAuth2Record env emailEntry rec = do
     else do
       exitWith x
 
+timeStampFormat :: String
+timeStampFormat = "%Y-%m-%d %k:%M %Z"
+
 getEmailOauth2 :: Environment -> String -> IO ()
 getEmailOauth2 env emailEntry = do
   rec <- readOAuth2Record env emailEntry
-  now <- TX.getPOSIXTime
-  let now' = realToFrac now
-  if now' > expires_at rec
+  now <- getCurrentTime
+  if now > parseTimeOrError True defaultTimeLocale timeStampFormat (expires_at rec)
     then do
       refresh <- renewAccessToken env (refresh_token rec)
-      let expire = now' + expires_in refresh - 300
-          rec' = rec { access_token' = access_token refresh, expires_at = expire }
+      let expire = addUTCTime (expires_in refresh - 300) now
+          expire' = formatTime defaultTimeLocale timeStampFormat expire
+          rec' = rec { accessToken = access_token refresh, expires_at = expire' }
       writeOAuth2Record env emailEntry rec'
-      logger "info" ("new token for " ++ emailEntry ++ "; expires at " ++ (show expire))
-      putStrLn $ access_token' rec'
-    else putStrLn $ access_token' rec
+      logger "info" ("new token for " ++ emailEntry ++ "; expires at " ++ expire')
+      putStrLn $ accessToken rec'
+    else putStrLn $ accessToken rec
 
 renewAccessToken :: Environment -> String -> IO RefreshRecord
 renewAccessToken env rft = do
