@@ -1,0 +1,48 @@
+cabal-version:      3.6
+name:               mailctl
+version:            0.1.0.0
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Peter Dobsan
+maintainer:         pdobsan@gmail.com
+extra-source-files:
+data-files:
+
+common common
+  default-language: Haskell2010
+  build-depends:
+    aeson,
+    base ^>=4.16.1.0,
+    directory,
+    githash,
+    http-conduit,
+    optparse-applicative,
+    pretty-simple,
+    process,
+    template-haskell,
+    text,
+    time,
+    utf8-string,
+  ghc-options:
+    -Wall
+
+library
+  import:         common
+  hs-source-dirs: lib
+  other-modules:  Paths_mailctl
+  autogen-modules: Paths_mailctl
+  exposed-modules:
+    MailCtl.Authorization,
+    MailCtl.CommandLine,
+    MailCtl.Environment,
+    MailCtl.Utilities,
+
+executable mailctl
+  import:         common
+  main-is:        Main.hs
+  hs-source-dirs: app
+  build-depends:
+    mailctl,
+  ghc-options:
+    -rtsopts
+    -threaded

@@ -1,0 +1,34 @@
+# project specific files
+Notes.md
+config.json
+tmp/
+
+# Haskell
+# compilation
+*.errors
+*.hi
+# cabal
+dist/
+dist-newstyle/
+cabal.project.local
+.ghc.environment.*
+# stack
+.stack-work/
+
+# Python
+# compiled files
+*.pyc
+*.pyo
+__pycache__/
+.mypy_cache/
+
+# Compiled files
+*.o
+*.so
+a.out
+
+# tar, backup, archive files
+*.bak
+*.tar.gz
+*.tar.bz2
+*.a
