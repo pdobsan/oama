@@ -27,13 +27,15 @@ enableCron :: Environment -> IO ()
 enableCron env = do
   TIO.writeFile (cron_indicator $ config env) ""
   logger "warning" "Enabled running fdm by cron."
-  statusCron env
+  env' <- loadEnvironment
+  statusCron env'
 
 disableCron :: Environment -> IO ()
 disableCron env = do
   D.removePathForcibly $ cron_indicator $ config env
   logger "warning" "Disabled running fdm by cron."
-  statusCron env
+  env' <- loadEnvironment
+  statusCron env'
 
 statusCron :: Environment -> IO ()
 statusCron env = do
