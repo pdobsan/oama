@@ -72,7 +72,7 @@ writeOAuth2Record env emailEntry rec = do
       exitWith x
 
 timeStampFormat :: String
-timeStampFormat = "%Y-%m-%d %k:%M %Z"
+timeStampFormat = "%Y-%m-%d %H:%M  %Z"
 
 getEmailOauth2 :: Environment -> String -> IO ()
 getEmailOauth2 env emailEntry = do
@@ -85,7 +85,7 @@ getEmailOauth2 env emailEntry = do
           expire' = formatTime defaultTimeLocale timeStampFormat expire
           rec' = rec { accessToken = access_token refresh, expires_at = expire' }
       writeOAuth2Record env emailEntry rec'
-      logger "info" ("new token for " ++ emailEntry ++ "; expires at " ++ expire')
+      logger "notice" ("new token for " ++ emailEntry ++ "; expires at " ++ expire')
       putStrLn $ accessToken rec'
     else putStrLn $ accessToken rec
 
