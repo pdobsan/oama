@@ -8,12 +8,12 @@ import System.Posix.Internals (c_umask)
 
 main :: IO ()
 main = do
-  _ <- c_umask 0o77
+  _   <- c_umask 0o77
   env <- loadEnvironment
   case optCommand $ options env of
     Getpwd emailEntry   -> getEmailPwd env emailEntry
     Oauth2 emailEntry   -> getEmailOauth2 env emailEntry
-    Fetch  emailEntries -> fetchAccounts env emailEntries
+    Fetch  emailEntries -> fetch env emailEntries
     ListEmails          -> listAccounts env
     Cron StatusCron     -> statusCron env
     Cron EnableCron     -> enableCron env

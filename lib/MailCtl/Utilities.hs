@@ -27,16 +27,17 @@ enableCron :: Environment -> IO ()
 enableCron env = do
   TIO.writeFile (cron_indicator $ config env) ""
   logger "warning" "Enabled running fdm by cron."
+  statusCron env
 
 disableCron :: Environment -> IO ()
 disableCron env = do
   D.removePathForcibly $ cron_indicator $ config env
   logger "warning" "Disabled running fdm by cron."
+  statusCron env
 
 statusCron :: Environment -> IO ()
 statusCron env = do
-  flag <- D.doesFileExist $ cron_indicator $ config env
-  if flag
+  if cron_enabled $ system_state env
     then do
       putStrLn "Running from cron is enabled:"
       putStrLn $ crontab $ system_state env
@@ -55,29 +56,22 @@ listAccounts env = do
   TIO.putStrLn "List of accounts fetched:"
   TIO.putStrLn z
 
-networkStatus :: Environment -> IO ()
-networkStatus env = do
-  if online $ system_state env
-    then do
-      putStrLn "Network connection(s):"
-      putStrLn $ connection $ system_state env
-    else do
-      putStrLn "ERROR - Computer is offline."
-      exitWith (ExitFailure 1)
+fetchAccounts :: FilePath -> [String] -> IO ()
+fetchAccounts fdmConfig as = do
+  let bs = concat [ ["-a", a] | a <- as ]
+  (x, _, _) <- P.readProcessWithExitCode "fdm" (["-f", fdmConfig, "-l"] ++ bs ++ ["fetch"]) ""
+  if x == ExitSuccess then return () else exitWith x
 
-fetchAccounts :: Environment -> [String] -> IO ()    
-fetchAccounts env as = do    
-  if online $ system_state env    
-    then do    
-      let bs = concat [ ["-a", a] | a <- as ]    
-      (x, _, _) <- P.readProcessWithExitCode    
-        "fdm"    
-        (["-f", fdm_config $ config env, "-l"] ++ bs ++ ["fetch"])    
-        ""    
-      if x == ExitSuccess then return () else exitWith x    
-    else do    
-      if (optQuiet $ options env)
-        then logger "error" "ERROR - Computer is offline."    
-        else putStrLn "ERROR - Computer is offline."    
-      exitWith (ExitFailure 1)    
+fetch :: Environment -> [String] -> IO ()
+fetch env accounts = do
+  let isOnline    = online $ system_state env
+      cronEnabled = cron_enabled $ system_state env
+      runByCron   = optCron $ options env
+  run isOnline cronEnabled runByCron
+ where
+  run False _ rbc = do
+    if rbc then logger "error" "ERROR - Computer is offline." else putStrLn "ERROR - Computer is offline."
+    exitWith (ExitFailure 1)
+  run True _  False = fetchAccounts (fdm_config $ config env) accounts
+  run True ce True  = if ce then fetchAccounts (fdm_config $ config env) accounts else exitWith ExitSuccess
 

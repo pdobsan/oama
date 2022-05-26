@@ -4,10 +4,18 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module MailCtl.Environment
+  ( loadEnvironment
+  , Program(..)
+  , Google(..)
+  , Configuration(..)
+  , SystemState(..)
+  , Environment(..)
+  )
 where
 
 import Data.Aeson
 import Data.Text qualified as T
+import System.Directory qualified as D
 import GHC.Generics
 import MailCtl.CommandLine
 import Options.Applicative (execParser)
@@ -49,9 +57,10 @@ data Configuration = Configuration
   deriving (Show, Generic, ToJSON, FromJSON)
 
 data SystemState = SystemState
-  { crontab        :: String
-  , online         :: Bool
-  , connection     :: String
+  { crontab      :: String
+  , cron_enabled :: Bool
+  , online       :: Bool
+  , connection   :: String
   }
   deriving (Show, Generic, ToJSON)
 
@@ -64,6 +73,14 @@ data Environment = Environment
 
 loadEnvironment :: IO Environment
 loadEnvironment = do
+  env     <- mkEnvironment
+  enabled <- isCronEnabled env
+  let ss  = system_state env
+      ss' = ss { cron_enabled = enabled }
+  return $ env { system_state = ss' }
+
+mkEnvironment :: IO Environment
+mkEnvironment = do
   opts <- execParser optsParser
   cfg  <- eitherDecodeFileStrict' $ optConfig opts :: IO (Either String Configuration)
   case cfg of
@@ -71,7 +88,7 @@ loadEnvironment = do
     Right cfg' -> do
       Environment
         <$> pure cfg'
-        <*> (SystemState <$> getCrontab <*> isOnline <*> getConnections)
+        <*> (SystemState <$> getCrontab <*> return False <*> isOnline <*> getConnections)
         <*> execParser optsParser
 
 getCrontab :: IO String
@@ -86,6 +103,9 @@ getCrontab = do
     else do
       putStr e
       exitWith x
+
+isCronEnabled :: Environment -> IO Bool
+isCronEnabled env = D.doesFileExist $ cron_indicator $ config env
 
 isOnline :: IO Bool
 isOnline = do
