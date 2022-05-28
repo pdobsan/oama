@@ -8,6 +8,7 @@ module MailCtl.Authorization
   )
 where
 
+import Control.Exception (try)
 import Data.Aeson (FromJSON, ToJSON, encode, eitherDecode', eitherDecodeStrict)
 import Data.ByteString.Lazy.UTF8 qualified as BLU
 import Data.ByteString.UTF8 qualified as BSU
@@ -72,7 +73,7 @@ writeOAuth2Record env emailEntry rec = do
       exitWith x
 
 timeStampFormat :: String
-timeStampFormat = "%Y-%m-%d %H:%M  %Z"
+timeStampFormat = "%Y-%m-%d %H:%M %Z"
 
 getEmailOauth2 :: Environment -> String -> IO ()
 getEmailOauth2 env emailEntry = do
@@ -97,10 +98,15 @@ renewAccessToken env rft = do
            "grant_type=refresh_token&" ++
            "refresh_token=" ++ rft
       req = req'{queryString = BSU.fromString qs}
-  resp <- httpBS req
-  case eitherDecodeStrict (getResponseBody resp) :: Either String RefreshRecord of
-    Left err -> error err
-    Right rec -> return rec
+  eresp <- try $ httpBS req :: IO (Either HttpException (Response BSU.ByteString))
+  case eresp of
+    -- hide request containing sensitive information
+    Left (HttpExceptionRequest _ x) -> error $ show x
+    Left (InvalidUrlException u _) -> error $ show u
+    Right resp ->
+      case eitherDecodeStrict (getResponseBody resp) :: Either String RefreshRecord of
+        Left err -> error err
+        Right rec -> return rec
 
 getEmailPwd :: Environment -> String -> IO ()
 getEmailPwd env emailEntry = do
