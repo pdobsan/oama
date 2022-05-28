@@ -23,6 +23,7 @@ import System.Directory qualified as D
 import System.Environment qualified as E
 import System.Exit (ExitCode (ExitSuccess), exitWith)
 import System.IO qualified as IO
+import System.Posix.Syslog (Priority(..))
 import System.Process qualified as P
 
 data RefreshRecord = RefreshRecord
@@ -86,7 +87,7 @@ getEmailOauth2 env emailEntry = do
           expire' = formatTime defaultTimeLocale timeStampFormat expire
           rec' = rec { accessToken = access_token refresh, expires_at = expire' }
       writeOAuth2Record env emailEntry rec'
-      logger "notice" ("new token for " ++ emailEntry ++ "; expires at " ++ expire')
+      logger Notice ("new token for " ++ emailEntry ++ "; expires at " ++ expire')
       putStrLn $ accessToken rec'
     else putStrLn $ accessToken rec
 

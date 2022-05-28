@@ -7,17 +7,17 @@ where
 
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
+import Foreign.C.String
 import MailCtl.CommandLine
 import MailCtl.Environment
 import System.Directory qualified as D
 import System.Exit (ExitCode (ExitFailure, ExitSuccess), exitWith, exitSuccess)    
+import System.Posix.Syslog (syslog, Priority(..))
 import System.Process qualified as P    
 import Text.Pretty.Simple
 
-logger :: String -> String -> IO ()
-logger level msg = do
-  (x, _, _) <- P.readProcessWithExitCode "logger" ["-t", "mailctl", "-p", "mail." ++ level, msg] ""
-  if x == ExitSuccess then return () else exitWith x
+logger :: Priority -> String -> IO ()
+logger pri msg = withCStringLen msg $ syslog Nothing pri
 
 pprintEnv :: Environment -> IO ()
 pprintEnv env = do
@@ -26,14 +26,14 @@ pprintEnv env = do
 enableCron :: Environment -> IO ()
 enableCron env = do
   TIO.writeFile (cron_indicator $ config env) ""
-  logger "warning" "Enabled running fdm by cron."
+  logger Warning "Enabled running fdm by cron."
   env' <- loadEnvironment
   statusCron env'
 
 disableCron :: Environment -> IO ()
 disableCron env = do
   D.removePathForcibly $ cron_indicator $ config env
-  logger "warning" "Disabled running fdm by cron."
+  logger Warning "Disabled running fdm by cron."
   env' <- loadEnvironment
   statusCron env'
 
@@ -72,7 +72,7 @@ fetch env accounts = do
   run isOnline cronEnabled runByCron
  where
   run False _ rbc = do
-    if rbc then logger "error" "ERROR - Computer is offline." else putStrLn "ERROR - Computer is offline."
+    if rbc then logger Error "ERROR - Computer is offline." else putStrLn "ERROR - Computer is offline."
     exitWith (ExitFailure 1)
   run True _  False = fetchAccounts (fdm_config $ config env) accounts
   run True ce True  = if ce then fetchAccounts (fdm_config $ config env) accounts else exitSuccess

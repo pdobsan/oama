@@ -16,6 +16,7 @@ common common
     directory,
     githash,
     http-conduit,
+    hsyslog,
     optparse-applicative,
     pretty-simple,
     process,
