@@ -10,7 +10,7 @@ import Data.Text.IO qualified as TIO
 import MailCtl.CommandLine
 import MailCtl.Environment
 import System.Directory qualified as D
-import System.Exit (ExitCode (ExitFailure, ExitSuccess), exitWith)    
+import System.Exit (ExitCode (ExitFailure, ExitSuccess), exitWith, exitSuccess)    
 import System.Process qualified as P    
 import Text.Pretty.Simple
 
@@ -75,5 +75,5 @@ fetch env accounts = do
     if rbc then logger "error" "ERROR - Computer is offline." else putStrLn "ERROR - Computer is offline."
     exitWith (ExitFailure 1)
   run True _  False = fetchAccounts (fdm_config $ config env) accounts
-  run True ce True  = if ce then fetchAccounts (fdm_config $ config env) accounts else exitWith ExitSuccess
+  run True ce True  = if ce then fetchAccounts (fdm_config $ config env) accounts else exitSuccess
 

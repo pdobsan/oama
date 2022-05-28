@@ -47,7 +47,7 @@ readOAuth2Record :: Environment -> String -> IO OAuth2Record
 readOAuth2Record env emailEntry = do
   let gpgFile = oauth2_dir (config env) ++ "/" ++ emailEntry ++ "-oauth2"
   (x, o, e) <- P.readProcessWithExitCode (exec $ decrypt_cmd $ config env)
-                                         ((args $ decrypt_cmd $ config env) ++ [gpgFile]) ""
+                                         (args (decrypt_cmd $ config env) ++ [gpgFile]) ""
   if x == ExitSuccess
     then case eitherDecode' (BLU.fromString o) :: Either String OAuth2Record of
               Left err -> error err
@@ -61,7 +61,7 @@ writeOAuth2Record env emailEntry rec = do
   let gpgFile = oauth2_dir (config env) ++ "/" ++ emailEntry ++ "-oauth2"
       jsrec = BLU.toString $ encode rec
   (Just h, _, _, p) <- P.createProcess (P.proc (exec $ encrypt_cmd $ config env)
-                         ((args $ encrypt_cmd $ config env) ++ [gpgFile ++ ".new"]))
+                         (args  (encrypt_cmd $ config env) ++ [gpgFile ++ ".new"]))
                          { P.std_in = P.CreatePipe }
   IO.hPutStr h jsrec 
   IO.hFlush h

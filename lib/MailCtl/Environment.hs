@@ -84,11 +84,9 @@ mkEnvironment = do
   opts <- execParser optsParser
   cfg  <- eitherDecodeFileStrict' $ optConfig opts :: IO (Either String Configuration)
   case cfg of
-    Left  err  -> error err
-    Right cfg' -> do
-      Environment
-        <$> pure cfg'
-        <*> (SystemState <$> getCrontab <*> return False <*> isOnline <*> getConnections)
+    Left err -> error err
+    Right cfg' ->
+      (Environment cfg' <$> (SystemState <$> getCrontab <*> return False <*> isOnline <*> getConnections))
         <*> execParser optsParser
 
 getCrontab :: IO String
