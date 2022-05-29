@@ -1,24 +1,23 @@
-
-LOCALDIR  = $(HOME)/.local
-LIBDIR    = $(LOCALDIR)/lib/email-oauth2
-VARDIR    = $(LOCALDIR)/var/email-oauth2
+APP       = mailctl
+GHC_VER   = ghc-$(shell ghc --version | choose -1)
+APP_VER   = $(APP)-$(shell rg '^version:' $(APP).cabal | choose 1)
 CABALDIR  = $(HOME)/.cabal
 CABALBIN  = $(CABALDIR)/bin
-CONFIGDIR = $(HOME)/.config/mailctl
+CONFIGDIR = $(HOME)/.config/$(APP)
 
 help:
 	@echo
 	@echo Available targets:
 	@echo
-	@echo "uninstall  - remove all components from the system"
-	@echo "             except $(VARDIR)"
+	@echo "install   - install $(APP_VER) using $(GHC_VER)"
+	@echo "uninstall - remove $(APP_VER) and its configs from the system"
 	@echo
 
-install: cabal-build $(CABALBIN)/mailctl $(CONFIGDIR)/config.json
+install: cabal-build $(CABALBIN)/$(APP) $(CONFIGDIR)/config.json
 
-$(CABALBIN)/mailctl: dist-newstyle/build/x86_64-linux/ghc-9.2.2/mailctl-0.1.0.0/x/mailctl/build/mailctl/mailctl
+$(CABALBIN)/$(APP): dist-newstyle/build/x86_64-linux/$(GHC_VER)/$(APP_VER)/x/$(APP)/build/$(APP)/$(APP)
 	install -m 700 $< $@
-	strip $(CABALBIN)/mailctl
+	strip $(CABALBIN)/$(APP)
 
 cabal-build:
 	cabal build
@@ -26,15 +25,12 @@ cabal-build:
 $(CONFIGDIR):
 	mkdir -p $(CONFIGDIR)
 
-$(VARDIR):
-	mkdir -p $(VARDIR)
-
 $(CONFIGDIR)/config.json: config.json | $(CONFIGDIR)
 	install -m 600 $< $@
 
 clean:
 	cabal clean
 
-uninstall:
-	rm -f $(CABALBIN)/mailctl
+uninstall: clean
+	rm -f $(CABALBIN)/$(APP)
 	rm -fr $(CONFIGDIR)
