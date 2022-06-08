@@ -1,0 +1,50 @@
+## msmtp/config
+#
+# msmtp (MTA) sends mail over SMTP
+# using mailctl as password manager and oauth2 manager
+#
+# Corresponding mutt config:
+#   set sendmail = msmtp
+#
+
+# Set default values for all following accounts.
+defaults
+syslog LOG_MAIL
+auto_from off
+
+account local
+from YOU@localhost
+host localhost
+# Set a default account
+account default: local
+
+
+# email account with IMAP user/password access
+
+account YOUR_EMAIL_NAME@EMAIL_SERVICE.COM
+from YOUR_EMAIL_NAME@EMAIL_SERVICE.COM
+user YOUR_EMAIL_NAME@EMAIL_SERVICE.COM
+passwordeval mailctl getpwd YOUR_EMAIL_NAME@EMAIL_SERVICE.COM
+host smtp.EMAIL_SERVICE.COM
+port 465
+tls_starttls off
+tls on
+auth on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+
+### ...
+
+# account at Google with oauth2 access
+
+account YOUR_EMAIL_NAME@gmail.com
+from YOUR_EMAIL_NAME@gmail.com
+user YOUR_EMAIL_NAME@gmail.com
+auth oauthbearer
+passwordeval mailctl oauth2 YOUR_EMAIL_NAME@gmail.com
+host smtp.gmail.com
+port 587
+tls on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+
+### ...
+

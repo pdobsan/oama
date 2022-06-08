@@ -29,17 +29,12 @@ data Program = Program
   deriving (Show, Generic, ToJSON, FromJSON)
 
 data Google = Google
-  { authorize_endpoint  :: String
-  , devicecode_endpoint :: String
-  , token_endpoint      :: String
-  , redirect_uri        :: String
-  , imap_endpoint       :: String
-  , pop_endpoint        :: String
-  , smtp_endpoint       :: String
-  , sasl_method         :: String
-  , scope               :: String
-  , client_id           :: String
-  , client_secret       :: String
+  { auth_endpoint  :: String
+  , token_endpoint :: String
+  , redirect_uri   :: String
+  , scope          :: String
+  , client_id      :: String
+  , client_secret  :: String
   }
   deriving (Show, Generic, ToJSON, FromJSON)
 

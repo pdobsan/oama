@@ -25,7 +25,7 @@ cabal-build:
 $(CONFIGDIR):
 	mkdir -p $(CONFIGDIR)
 
-$(CONFIGDIR)/config.json: config.json | $(CONFIGDIR)
+$(CONFIGDIR)/config.json: configs/mailctl-config.json | $(CONFIGDIR)
 	install -m 600 $< $@
 
 clean:

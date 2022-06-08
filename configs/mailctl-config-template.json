@@ -1,0 +1,27 @@
+{
+  "fdm_config": "/YOUR HOME DIRECTORY/.config/fdm/fdm.conf",
+  "fdm_accounts": "/YOUR HOME DIRECTORY/.config/fdm/accounts.conf",
+  "cron_indicator": "/YOUR HOME DIRECTORY/.local/var/mailctl/fdm-cron-enabled",
+  "password_store": "/YOUR HOME DIRECTORY/.local/var/password-store",
+  "oauth2_dir": "/YOUR HOME DIRECTORY/.local/var/mailctl",
+  "pass_cmd": {
+    "exec": "pass",
+    "args": ["YOUR pass EMAIL SUBDIR FOR EMAIL ACCOUNTS, like email/"]
+  },
+  "encrypt_cmd": {
+    "exec": "gpg",
+    "args": ["--encrypt", "--recipient", "YOUR GPG KEY UID", "-o"]
+  },
+  "decrypt_cmd": {
+    "exec": "gpg",
+    "args": ["--decrypt"]
+  },
+  "google": {
+    "auth_endpoint": "https://accounts.google.com/o/oauth2/auth",
+    "token_endpoint": "https://accounts.google.com/o/oauth2/token",
+    "redirect_uri": "http://localhost:8080",
+    "scope": "https://mail.google.com/",
+    "client_id": "YOUR OUATH2 CLIENT's ID",
+    "client_secret": "YOUR OAUTH2 CLIENTS's SECRET"
+  }
+}
