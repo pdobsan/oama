@@ -59,7 +59,7 @@ generated. Here is how to do it for `zsh`:
 
 ## Configuartion
 
-The files in the `config/` directory are configuration templates for
+The files in the `configs/` directory are configuration templates for
 `mailctl`, `msmtp` and `fdm`. Edit them to adjust to your environment.
 
 The base password manager used here is
