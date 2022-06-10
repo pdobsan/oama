@@ -66,13 +66,15 @@ fetchAccounts fdmConfig as = do
 
 fetch :: Environment -> [String] -> IO ()
 fetch env accounts = do
-  let isOnline    = online $ system_state env
+  let internet    = internet_OK $ system_state env
       cronEnabled = cron_enabled $ system_state env
       runByCron   = optCron $ options env
-  run isOnline cronEnabled runByCron
+  run internet cronEnabled runByCron
  where
   run False _ rbc = do
-    if rbc then logger Error "ERROR - Computer is offline." else putStrLn "ERROR - Computer is offline."
+    if rbc
+      then logger Error "ERROR - Internet is not working properly; bailing out."
+      else putStrLn "ERROR - Internet is not working properly; bailing out."
     exitWith (ExitFailure 1)
   run True _  False = fetchAccounts (fdm_config $ config env) accounts
   run True ce True  = if ce then fetchAccounts (fdm_config $ config env) accounts else exitSuccess

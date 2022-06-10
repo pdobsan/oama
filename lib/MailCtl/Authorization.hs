@@ -37,7 +37,6 @@ data RefreshRecord = RefreshRecord
 data OAuth2Record = OAuth2Record
   { email         :: String
   , registration  :: String
-  , authflow      :: String
   , refresh_token :: String
   , accessToken   :: String
   , expires_at    :: String
