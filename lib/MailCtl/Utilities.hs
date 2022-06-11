@@ -72,9 +72,10 @@ fetch env accounts = do
   run internet cronEnabled runByCron
  where
   run False _ rbc = do
+    let errmsg = "Temporary connection or name resolution failure ... operation aborted."
     if rbc
-      then logger Error "ERROR - Internet is not working properly; bailing out."
-      else putStrLn "ERROR - Internet is not working properly; bailing out."
+      then logger Error errmsg
+      else putStrLn errmsg
     exitWith (ExitFailure 1)
   run True _  False = fetchAccounts (fdm_config $ config env) accounts
   run True ce True  = if ce then fetchAccounts (fdm_config $ config env) accounts else exitSuccess
