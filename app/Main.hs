@@ -14,7 +14,10 @@ main = do
     env <- loadEnvironment
     case optCommand $ options env of
       Getpwd emailEntry   -> getEmailPwd env emailEntry
-      Oauth2 emailEntry   -> getEmailOauth2 env emailEntry
+      Oauth2 emailEntry   -> getEmailAuth env emailEntry
+      Authorize emailEntry -> do
+        auth <- authorizeEmail env emailEntry
+        print auth
       Fetch  emailEntries -> fetch env emailEntries
       ListEmails          -> listAccounts env
       Cron StatusCron     -> statusCron env

@@ -13,6 +13,7 @@ common common
   build-depends:
     aeson,
     base >=4.14.3.0,
+    bytestring,
     directory,
     dns,
     githash,
@@ -26,7 +27,9 @@ common common
     template-haskell,
     text,
     time,
+    twain,
     utf8-string,
+    warp,
   ghc-options:
     -Wall
 
