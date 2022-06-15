@@ -21,7 +21,8 @@ import Data.Maybe (fromMaybe)
 import Data.Time.Clock
 import Data.Time.Format
 import GHC.Generics (Generic)
-import MailCtl.Environment
+import MailCtl.Environment hiding (Google (scope))
+import MailCtl.Environment qualified as Google (Google (scope))
 import MailCtl.Utilities (logger)
 import Network.HTTP.Conduit
 import Network.HTTP.Simple
@@ -47,6 +48,10 @@ data AuthRecord = AuthRecord
   , registration  :: Maybe String
   }
   deriving (Show, Generic, ToJSON, FromJSON)
+
+-- The OAuth2 authorization flow i simplemented along the lines of
+-- https://developers.google.com/identity/protocols/oauth2/native-app
+-- The managed credentials are kept in encrypted files using GNU PG.
 
 readAuthRecord :: Environment -> String -> IO AuthRecord
 readAuthRecord env email' = do
@@ -74,11 +79,12 @@ writeAuthRecord env email' rec = do
   x <- P.waitForProcess p
   if x == ExitSuccess
     then D.renameFile (gpgFile ++ ".new") gpgFile
-    else do
-      exitWith x
+    else exitWith x
 
 timeStampFormat :: String
 timeStampFormat = "%Y-%m-%d %H:%M %Z"
+
+-- Provide access_token while renewing it when necessary
 
 getEmailAuth :: Environment -> String -> IO ()
 getEmailAuth env email' = do
@@ -90,7 +96,12 @@ getEmailAuth env email' = do
       refresh <- renewAccessToken env (fromMaybe ""(refresh_token rec))
       let expire = addUTCTime (expires_in refresh - 300) now
           expire' = formatTime defaultTimeLocale timeStampFormat expire
-          rec' = rec { access_token = access_token refresh, exp_date = Just expire' }
+          rec' = rec { access_token = access_token refresh
+                     , expires_in = expires_in refresh, exp_date = Just expire'
+                     , refresh_token = refresh_token refresh
+                     , scope = scope refresh
+                     , token_type = token_type refresh
+                     }
       writeAuthRecord env email' rec'
       logger Notice ("new token for " ++ email' ++ "; expires at " ++ expire')
       putStrLn $ access_token rec'
@@ -99,7 +110,7 @@ getEmailAuth env email' = do
 updateRequest :: Request -> [(String, String)] -> Request
 updateRequest req xs =
   let ys = [ (BSU.fromString $ fst x, Just $ BSU.fromString $ snd x) | x <- xs ]
-  in setRequestQueryString ys req
+  in  setRequestQueryString ys req
 
 renewAccessToken :: Environment -> String -> IO AuthRecord
 renewAccessToken env rft = do
@@ -120,7 +131,7 @@ renewAccessToken env rft = do
         Right rec -> return rec
 
 
--- implementing https://developers.google.com/identity/protocols/oauth2/native-app
+-- initial registration for authorization credentials
 
 getAccessToken :: Environment -> String -> IO AuthRecord
 getAccessToken env authcode = do
@@ -145,7 +156,7 @@ generateAuthPage env email' = do
   let qs = [ ("client_id", client_id (google $ config env))
            , ("redirect_uri", redirect_uri (google $ config env))
            , ("response_type", "code")
-           , ("scope", MailCtl.Environment.scope (google $ config env))
+           , ("scope", Google.scope (google $ config env))
            , ("login_hint", email')
            ]
   req <- parseRequest $ "POST " ++ auth_endpoint (google $ config env)
@@ -187,6 +198,9 @@ authorizeEmail env email' = do
   return $ AuthRecord "access" 3000 "scope" "bearer"
           (Just "2022") (Just "refresh") (Just email') (Just "registration")
 
+
+-- Utilities for traditional password based email services
+-- using [pass](https://www.passwordstore.org/) 
 
 getEmailPwd :: Environment -> String -> IO ()
 getEmailPwd env email' = do
