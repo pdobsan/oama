@@ -93,12 +93,13 @@ getEmailAuth env email' = do
   let expd = fromMaybe "2000-01-01 12:00 UTC" (exp_date rec)
   if now > parseTimeOrError True defaultTimeLocale timeStampFormat expd
     then do
-      refresh <- renewAccessToken env (fromMaybe ""(refresh_token rec))
+      refresh <- renewAccessToken env (fromMaybe "" (refresh_token rec))
       let expire = addUTCTime (expires_in refresh - 300) now
           expire' = formatTime defaultTimeLocale timeStampFormat expire
           rec' = rec { access_token = access_token refresh
                      , expires_in = expires_in refresh, exp_date = Just expire'
-                     , refresh_token = refresh_token refresh
+                     -- despite of google's doc refresh_token is not returned!
+                     -- , refresh_token = refresh_token refresh
                      , scope = scope refresh
                      , token_type = token_type refresh
                      }
