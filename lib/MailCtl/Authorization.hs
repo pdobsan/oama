@@ -50,7 +50,7 @@ data AuthRecord = AuthRecord
   }
   deriving (Show, Generic, ToJSON, FromJSON)
 
--- The OAuth2 authorization flow i simplemented along the lines of
+-- The OAuth2 authorization flow is simplemented along the lines of
 -- https://developers.google.com/identity/protocols/oauth2/native-app
 -- The managed credentials are kept in encrypted files using GNU PG.
 

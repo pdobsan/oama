@@ -22,7 +22,7 @@ import Network.DNS (makeResolvSeed, defaultResolvConf, withResolver, lookupA)
 import Network.Icmp.Ping (host)
 import Options.Applicative (execParser)
 import System.Directory qualified as D
-import System.Exit (ExitCode (ExitSuccess), exitWith)    
+import System.Exit (ExitCode (ExitSuccess), exitWith, exitFailure)    
 import System.Process qualified as P    
 
 data Program = Program
@@ -79,12 +79,19 @@ loadEnvironment = do
 mkEnvironment :: IO Environment
 mkEnvironment = do
   opts <- execParser optsParser
-  cfg  <- eitherDecodeFileStrict' $ optConfig opts :: IO (Either String Configuration)
-  case cfg of
-    Left err -> error err
-    Right cfg' ->
-      (Environment cfg' <$> (SystemState <$> getCrontab <*> return False <*> andM isOnline isDNSWorking))
-        <*> execParser optsParser
+  configExists <- D.doesFileExist $ optConfig opts
+  if configExists
+    then do
+      cfg  <- eitherDecodeFileStrict' $ optConfig opts :: IO (Either String Configuration)
+      case cfg of
+        Left err -> error err
+        Right cfg' ->
+          (Environment cfg' <$> (SystemState <$> getCrontab <*> return False <*> andM isOnline isDNSWorking))
+            <*> execParser optsParser
+    else do
+      putStrLn "Can't find a configuration file."
+      putStrLn "This program needs one to work."
+      exitFailure
 
 getCrontab :: IO String
 getCrontab = do
