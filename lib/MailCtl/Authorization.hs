@@ -12,6 +12,7 @@ module MailCtl.Authorization
 where
 
 import Control.Concurrent
+import Control.Monad.IO.Class
 import Control.Exception (try)
 import Data.Aeson (FromJSON, ToJSON, encode, eitherDecode', eitherDecodeStrict)
 import Data.ByteString.Lazy (fromStrict)
@@ -95,16 +96,16 @@ getEmailAuth env email' = do
     then do
       refresh <- renewAccessToken env (fromMaybe "" (refresh_token rec))
       let expire = addUTCTime (expires_in refresh - 300) now
-          expire' = formatTime defaultTimeLocale timeStampFormat expire
+          expDate = formatTime defaultTimeLocale timeStampFormat expire
           rec' = rec { access_token = access_token refresh
-                     , expires_in = expires_in refresh, exp_date = Just expire'
+                     , expires_in = expires_in refresh, exp_date = Just expDate
                      -- despite of google's doc refresh_token is not returned!
                      -- , refresh_token = refresh_token refresh
                      , scope = scope refresh
                      , token_type = token_type refresh
                      }
       writeAuthRecord env email' rec'
-      logger Notice ("new token for " ++ email' ++ "; expires at " ++ expire')
+      logger Notice ("new token for " ++ email' ++ "; expires at " ++ expDate)
       putStrLn $ access_token rec'
     else putStrLn $ access_token rec
 
@@ -140,6 +141,7 @@ getAccessToken env authcode = do
            , ("client_secret", client_secret (google $ config env))
            , ("code", authcode)
            , ("grant_type", "authorization_code")
+           , ("redirect_uri", redirect_uri (google $ config env))
            ]
   req <- parseRequest $ "POST " ++ token_endpoint (google $ config env)
   eresp <- try $ httpBS (updateRequest req qs) :: IO (Either HttpException (Response BSU.ByteString))
@@ -177,9 +179,17 @@ localWebServer env email' = do
       finishAuth :: TW.ResponderM a
       finishAuth = do
         code :: String <- TW.param "code"
-        scope' :: String <- TW.param "scope"
+        authrec <- liftIO $ getAccessToken env code
+        now <- liftIO getCurrentTime
+        let expire = addUTCTime (expires_in authrec - 300) now
+            expDate = formatTime defaultTimeLocale timeStampFormat expire
+            authRec = authrec { exp_date = Just expDate, email = Just email', registration = Just "google" }
+        liftIO $ writeAuthRecord env email' authRec
         TW.send $ TW.html $ BLU.fromString $
-          printf "<h4>%s</h4><p>code: %s</p><p>scope: %s</p>" email' code scope'
+          printf "<h4>Received new refresh and access tokens for %s</h4>" email'
+          <> printf "<p>They have been saved encrypted in <kbd>%s/%s.auth</kbd></p>"
+             (oauth2_dir (config env)) email'
+          <> printf "<p>You may now quit the waiting <kbd>mailctl</kbd> program.</p>"
       routes :: [TW.Middleware]
       routes = [ TW.get "/start" startAuth
                , TW.get "/" finishAuth
@@ -188,16 +198,15 @@ localWebServer env email' = do
       missing = TW.send $ TW.html "Not found..."
   run 8080 $ foldr ($) (TW.notFound missing) routes
 
-authorizeEmail :: Environment -> String -> IO AuthRecord
+authorizeEmail :: Environment -> String -> IO ()
 authorizeEmail env email' = do
-  putStrLn $ "To authorize " ++ email' ++ " visit url below:"
+  putStrLn $ "To grant OAuth2 access to " ++ email' ++ " visit the local URL below with your browser."
   putStrLn $ redirect_uri (google $ config env) ++ "/start"
   _ <- forkIO $ localWebServer env email'
   putStrLn "Authorization started ... "
-  putStrLn "Hit <Enter> when it has completed --> "
+  putStrLn "Hit <Enter> when it has been completed --> "
   _ <- getLine
-  return $ AuthRecord "access" 3000 "scope" "bearer"
-          (Just "2022") (Just "refresh") (Just email') (Just "registration")
+  putStrLn "Now try to fetch some email!"
 
 
 -- Utilities for traditional password based email services
