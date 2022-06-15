@@ -31,6 +31,7 @@ for gmail only.
     Available commands:
       getpwd                   get the password of an email entry
       oauth2                   get the oauth2 access code of an email entry
+      authorize                authorize an email entry for Oauth2
       fetch                    get fdm to fetch all or the given accounts
       cron                     Manage running by cron
       list                     list all accounts in fdm's config
@@ -79,8 +80,8 @@ authorized `gpg-agent` is running.
 
 ### Logging
 
-All transactions and exceptions are logged to `syslog`. Assumed a system
-using `systemd` you can inspect the log with the command below:
+All transactions and exceptions are logged to `syslog`. If your OS using
+`systemd` you can inspect the log with the command below:
 
     journalctl --identifier fdm --identifier mailctl --identifier msmtp -e
 
