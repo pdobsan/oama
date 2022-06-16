@@ -17,9 +17,6 @@ import Data.Aeson
 import Data.Text qualified as T
 import GHC.Generics
 import MailCtl.CommandLine
-import Net.IPv4 (ipv4)
-import Network.DNS (makeResolvSeed, defaultResolvConf, withResolver, lookupA)
-import Network.Icmp.Ping (host)
 import Options.Applicative (execParser)
 import System.Directory qualified as D
 import System.Exit (ExitCode (ExitSuccess), exitWith, exitFailure)    
@@ -57,7 +54,6 @@ data Configuration = Configuration
 data SystemState = SystemState
   { crontab      :: String
   , cron_enabled :: Bool
-  , internet_OK  :: Bool
   }
   deriving (Show, Generic, ToJSON)
 
@@ -86,7 +82,7 @@ mkEnvironment = do
       case cfg of
         Left err -> error err
         Right cfg' ->
-          (Environment cfg' <$> (SystemState <$> getCrontab <*> return False <*> andM isOnline isDNSWorking))
+          (Environment cfg' <$> (SystemState <$> getCrontab <*> return False))
             <*> execParser optsParser
     else do
       putStrLn "Can't find a configuration file."
@@ -109,22 +105,3 @@ getCrontab = do
 isCronEnabled :: Environment -> IO Bool
 isCronEnabled env = D.doesFileExist $ cron_indicator $ config env
 
-isOnline :: IO Bool
-isOnline = do
-  pong <- host 3000000 $ ipv4 8 8 8 8
-  case pong of
-    Left  _ -> return False
-    Right _ -> return True
-
-isDNSWorking :: IO Bool
-isDNSWorking = do
-  rs   <- makeResolvSeed defaultResolvConf
-  recA <- withResolver rs $ \resolver -> lookupA resolver "accounts.google.com"
-  case recA of
-    Left  _ -> return False
-    Right _ -> return True
-
-andM :: Monad m => m Bool -> m Bool -> m Bool
-andM mx my = do
-  x <- mx
-  if x then my else return x

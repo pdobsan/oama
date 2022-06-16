@@ -78,6 +78,16 @@ authorized `gpg-agent` is running.
     */10 * * * *  mailctl --run-by-cron fetch
 
 
+## Installation
+
+Clone this repository and invoke `cabal`:
+
+    git clone https://github.com/pdobsan/mailctl.git
+    cd mailctl
+    cabal install
+
+`mailctl` is known to build with `ghc 8.10.7` and `ghc 9.2.3`
+
 ### Logging
 
 All transactions and exceptions are logged to `syslog`. If your OS using

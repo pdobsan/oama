@@ -1,6 +1,6 @@
 cabal-version:      3.6
 name:               mailctl
-version:            0.1.0.0
+version:            0.2.0.0
 license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Peter Dobsan
@@ -15,13 +15,9 @@ common common
     base >=4.14.3.0,
     bytestring,
     directory,
-    dns,
-    githash,
     hsyslog,
     http-conduit,
-    ip,
     optparse-applicative,
-    ping,
     pretty-simple,
     process,
     template-haskell,

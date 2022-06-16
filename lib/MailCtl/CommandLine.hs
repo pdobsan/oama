@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module MailCtl.CommandLine
   ( Opts(..)
   , Command(..)
@@ -9,7 +7,6 @@ module MailCtl.CommandLine
 where
 
 import Data.Version (showVersion)
-import GitHash
 import Options.Applicative
 import Paths_mailctl (version)
 
@@ -33,16 +30,8 @@ optsParser = info
 
 versionOption :: Parser (a -> a)
 versionOption = do
-  let
-    gi    = $$tGitInfoCwd
-    hash  = take 8 $ giHash gi
-    cdate = giCommitDate gi
-    rev   = show $ giCommitCount gi
-    dirty | giDirty gi = " (uncommitted files present!)"
-          | otherwise  = ""
-    branch = giBranch gi
-    verinfo =
-      concat ["mailctl-", showVersion version, " -- ", branch, " rev", rev, ".", hash, dirty, " ", cdate]
+  let verinfo = "mailctl version " <> showVersion version
+                <> "\nCopyright (C) Peter Dobsan 2022"
   infoOption verinfo (long "version" <> help "Show version")
 
 programOptions :: Parser Opts

@@ -11,7 +11,7 @@ import Foreign.C.String
 import MailCtl.CommandLine
 import MailCtl.Environment
 import System.Directory qualified as D
-import System.Exit (ExitCode (ExitFailure, ExitSuccess), exitWith, exitSuccess)    
+import System.Exit (ExitCode (ExitSuccess), exitWith, exitSuccess)    
 import System.Posix.Syslog (syslog, Priority(..))
 import System.Process qualified as P    
 import Text.Pretty.Simple
@@ -66,17 +66,10 @@ fetchAccounts fdmConfig as = do
 
 fetch :: Environment -> [String] -> IO ()
 fetch env accounts = do
-  let internet    = internet_OK $ system_state env
-      cronEnabled = cron_enabled $ system_state env
+  let cronEnabled = cron_enabled $ system_state env
       runByCron   = optCron $ options env
-  run internet cronEnabled runByCron
+  run cronEnabled runByCron
  where
-  run False _ rbc = do
-    let errmsg = "Temporary connection or name resolution failure ... operation aborted."
-    if rbc
-      then logger Error errmsg
-      else putStrLn errmsg
-    exitWith (ExitFailure 1)
-  run True _  False = fetchAccounts (fdm_config $ config env) accounts
-  run True ce True  = if ce then fetchAccounts (fdm_config $ config env) accounts else exitSuccess
+  run _  False = fetchAccounts (fdm_config $ config env) accounts
+  run ce True  = if ce then fetchAccounts (fdm_config $ config env) accounts else exitSuccess
 
