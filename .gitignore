@@ -1,6 +1,7 @@
 # project specific files
 Notes.md
-configs/mailctl-config.json
+configs/config.json
+configs/services.json
 tmp/
 
 # Haskell

@@ -1,6 +1,4 @@
 {-# LANGUAGE ImportQualifiedPost   #-}
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 
@@ -14,16 +12,15 @@ where
 import Control.Concurrent
 import Control.Monad.IO.Class
 import Control.Exception (try)
-import Data.Aeson (FromJSON, ToJSON, encode, eitherDecode', eitherDecodeStrict)
+import Data.Aeson (encode, eitherDecode', eitherDecodeStrict)
+import Data.Bifunctor (bimap)
 import Data.ByteString.Lazy (fromStrict)
 import Data.ByteString.Lazy.UTF8 qualified as BLU
 import Data.ByteString.UTF8 qualified as BSU
 import Data.Maybe (fromMaybe)
 import Data.Time.Clock
 import Data.Time.Format
-import GHC.Generics (Generic)
-import MailCtl.Environment hiding (Google (scope))
-import MailCtl.Environment qualified as Google (Google (scope))
+import MailCtl.Environment
 import MailCtl.Utilities (logger)
 import Network.HTTP.Conduit
 import Network.HTTP.Simple
@@ -38,19 +35,7 @@ import Text.Printf
 import Web.Twain qualified as TW
 -- import Text.Pretty.Simple
 
-data AuthRecord = AuthRecord
-  { access_token  :: String
-  , expires_in    :: NominalDiffTime
-  , scope         :: String
-  , token_type    :: String
-  , exp_date      :: Maybe String
-  , refresh_token :: Maybe String
-  , email         :: Maybe String
-  , registration  :: Maybe String
-  }
-  deriving (Show, Generic, ToJSON, FromJSON)
-
--- The OAuth2 authorization flow is simplemented along the lines of
+-- The OAuth2 authorization flow is implemented along the lines of
 -- https://developers.google.com/identity/protocols/oauth2/native-app
 -- The managed credentials are kept in encrypted files using GNU PG.
 
@@ -89,124 +74,156 @@ timeStampFormat = "%Y-%m-%d %H:%M %Z"
 
 getEmailAuth :: Environment -> String -> IO ()
 getEmailAuth env email' = do
-  rec <- readAuthRecord env email'
+  authrec <- getEmailAuth' env email'
+  case authrec of
+    Right rec -> putStrLn $ access_token rec
+    Left errmsg -> error errmsg
+
+getEmailAuth' :: Environment -> String -> IO (Either String AuthRecord)
+getEmailAuth' env email' = do
+  authrec <- readAuthRecord env email'
   now <- getCurrentTime
-  let expd = fromMaybe "2000-01-01 12:00 UTC" (exp_date rec)
+  let expd = fromMaybe "2000-01-01 12:00 UTC" (exp_date authrec)
   if now > parseTimeOrError True defaultTimeLocale timeStampFormat expd
     then do
-      refresh <- renewAccessToken env (fromMaybe "" (refresh_token rec))
-      let expire = addUTCTime (expires_in refresh - 300) now
-          expDate = formatTime defaultTimeLocale timeStampFormat expire
-          rec' = rec { access_token = access_token refresh
-                     , expires_in = expires_in refresh, exp_date = Just expDate
-                     -- despite of google's doc refresh_token is not returned!
-                     -- , refresh_token = refresh_token refresh
-                     , scope = scope refresh
-                     , token_type = token_type refresh
-                     }
-      writeAuthRecord env email' rec'
-      logger Notice ("new token for " ++ email' ++ "; expires at " ++ expDate)
-      putStrLn $ access_token rec'
-    else putStrLn $ access_token rec
+      newa <- renewAccessToken env (service authrec) (refresh_token authrec)
+      case newa of
+        Left err -> return $ Left err
+        Right newA -> do
+          let expire = addUTCTime (expires_in newA - 300) now
+              expDate = formatTime defaultTimeLocale timeStampFormat expire
+              authrec' = authrec { access_token = access_token newA
+                         , expires_in = expires_in newA, exp_date = Just expDate
+                         -- despite of google's doc refresh_token is not returned!
+                         -- , refresh_token = refresh_token newA
+                         , scope = scope newA
+                         , token_type = token_type newA
+                         }
+          writeAuthRecord env email' authrec'
+          logger Notice ("new token for " ++ email' ++ "; expires at " ++ expDate)
+          return $ Right authrec'
+        else return $ Right authrec
 
-updateRequest :: Request -> [(String, String)] -> Request
+updateRequest :: Request -> [(String, Maybe String)] -> Request
 updateRequest req xs =
-  let ys = [ (BSU.fromString $ fst x, Just $ BSU.fromString $ snd x) | x <- xs ]
+  let ys = [ bimap BSU.fromString (BSU.fromString <$>) x | x <- xs ]
   in  setRequestQueryString ys req
 
-renewAccessToken :: Environment -> String -> IO AuthRecord
-renewAccessToken env rft = do
-  let qs = [ ("client_id", client_id (google $ config env))
-           , ("client_secret", client_secret (google $ config env))
-           , ("grant_type", "refresh_token")
-           , ("refresh_token", rft)
-           ]
-  req <- parseRequest $ "POST " ++ token_endpoint (google $ config env)
-  eresp <- try $ httpBS (updateRequest req qs) :: IO (Either HttpException (Response BSU.ByteString))
+runPOSTRequest :: String -> [(String, Maybe String)] -> IO (Either String BSU.ByteString)
+runPOSTRequest url queries = do
+  req <- parseRequest $ "POST " ++ url
+  -- Either HttpException (Response BSU.ByteString)
+  eresp <- try $ httpBS (updateRequest req queries) :: IO (Either HttpException (Response BSU.ByteString))
   case eresp of
     -- hide request containing sensitive information
-    Left (HttpExceptionRequest _ x) -> error $ show x
-    Left (InvalidUrlException u _) -> error $ show u
+    Left (HttpExceptionRequest _ x) -> return $ Left $ show x
+    Left (InvalidUrlException u _) -> return $ Left u
+    Right resp -> return $ Right $ getResponseBody resp
+
+fetchAuthRecord :: String -> [(String, Maybe String)] -> IO (Either String AuthRecord)
+fetchAuthRecord url queries = do
+  eresp <- runPOSTRequest url queries
+  case eresp of
+    Left err -> return $ Left err
     Right resp ->
-      case eitherDecodeStrict (getResponseBody resp) :: Either String AuthRecord of
-        Left err -> error err
-        Right rec -> return rec
+      case eitherDecodeStrict resp :: Either String AuthRecord of
+        Left err -> return $ Left err
+        Right rec -> return $ Right rec
+
+renewAccessToken :: Environment -> Maybe String -> Maybe String -> IO (Either String AuthRecord)
+renewAccessToken _ Nothing _ = return $ Left "renewAccessToken: Nothing as service string argument"
+renewAccessToken _ _ Nothing = return $ Left "renewAccessToken: Nothing as refresh token argument"
+renewAccessToken env (Just serv) (Just rft) = do
+  let ss = services env
+      qs = [ ("client_id", serviceLookup ss serv client_id)
+           , ("client_secret", serviceLookup ss serv client_secret) 
+           , ("grant_type", Just "refresh_token")
+           , ("refresh_token", Just rft)
+           ]
+  case serviceLookup ss serv token_endpoint of
+    Nothing -> error "renewAccessToken: missing token_endpoint field in Services."
+    Just tokenEndpoint -> fetchAuthRecord tokenEndpoint qs
 
 
 -- initial registration for authorization credentials
 
-getAccessToken :: Environment -> String -> IO AuthRecord
-getAccessToken env authcode = do
-  let qs = [ ("client_id", client_id (google $ config env))
-           , ("client_secret", client_secret (google $ config env))
-           , ("code", authcode)
-           , ("grant_type", "authorization_code")
-           , ("redirect_uri", redirect_uri (google $ config env))
+getAccessToken :: Environment -> Maybe String -> String -> IO (Either String AuthRecord)
+getAccessToken _ Nothing _ = return $ Left "getAccessToken: missing service string"
+getAccessToken env (Just serv) authcode = do
+  let ss = services env
+      qs = [ ("client_id", serviceLookup ss serv client_id)
+           , ("client_secret", serviceLookup ss serv client_secret)
+           , ("code", Just authcode)
+           , ("grant_type", Just "authorization_code")
+           , ("redirect_uri", serviceLookup ss serv redirect_uri)
            ]
-  req <- parseRequest $ "POST " ++ token_endpoint (google $ config env)
-  eresp <- try $ httpBS (updateRequest req qs) :: IO (Either HttpException (Response BSU.ByteString))
-  case eresp of
-    -- hide request containing sensitive information
-    Left (HttpExceptionRequest _ x) -> error $ show x
-    Left (InvalidUrlException u _) -> error $ show u
-    Right resp ->
-      case eitherDecodeStrict (getResponseBody resp) :: Either String AuthRecord of
-        Left err -> error err
-        Right rec -> return rec
+  case serviceLookup ss serv token_endpoint of
+    Nothing -> error "getAccessToken: missing token_endpoint field in Services."
+    Just tokenEndpoint -> fetchAuthRecord tokenEndpoint qs
 
-generateAuthPage :: Environment -> String -> IO BSU.ByteString
-generateAuthPage env email' = do
-  let qs = [ ("client_id", client_id (google $ config env))
-           , ("redirect_uri", redirect_uri (google $ config env))
-           , ("response_type", "code")
-           , ("scope", Google.scope (google $ config env))
-           , ("login_hint", email')
+generateAuthPage :: Environment -> Maybe String -> String -> IO (Either String BSU.ByteString)
+generateAuthPage _ Nothing _ = return $ Left "generateAuthPage: missing service string"
+generateAuthPage env (Just serv) email' = do
+  let ss = services env
+      qs = [ ("client_id", serviceLookup ss serv client_id)
+           , ("redirect_uri", serviceLookup ss serv redirect_uri)
+           , ("response_type", Just "code")
+           , ("scope", serviceLookup ss serv auth_scope)
+           , ("login_hint", Just email')
            ]
-  req <- parseRequest $ "POST " ++ auth_endpoint (google $ config env)
-  eresp <- try $ httpBS (updateRequest req qs) :: IO (Either HttpException (Response BSU.ByteString))
-  case eresp of
-    -- hide request containing sensitive information
-    Left (HttpExceptionRequest _ x) -> error $ show x
-    Left (InvalidUrlException u _) -> error $ show u
-    Right resp -> do
-      return $ responseBody resp
+  case serviceLookup ss serv auth_endpoint of
+    Nothing -> error "generateAuthPage: missing auth_endpoint field in Services."
+    Just tokenEndpoint -> runPOSTRequest tokenEndpoint qs
 
-localWebServer :: Environment -> String -> IO ()
-localWebServer env email' = do
-  authPage <- generateAuthPage env email'
-  let startAuth :: TW.ResponderM a
-      startAuth = TW.send $ TW.html $ fromStrict authPage
-      finishAuth :: TW.ResponderM a
-      finishAuth = do
-        code :: String <- TW.param "code"
-        authrec <- liftIO $ getAccessToken env code
-        now <- liftIO getCurrentTime
-        let expire = addUTCTime (expires_in authrec - 300) now
-            expDate = formatTime defaultTimeLocale timeStampFormat expire
-            authRec = authrec { exp_date = Just expDate, email = Just email', registration = Just "google" }
-        liftIO $ writeAuthRecord env email' authRec
-        TW.send $ TW.html $ BLU.fromString $
-          printf "<h4>Received new refresh and access tokens for %s</h4>" email'
-          <> printf "<p>They have been saved encrypted in <kbd>%s/%s.auth</kbd></p>"
-             (oauth2_dir (config env)) email'
-          <> printf "<p>You may now quit the waiting <kbd>mailctl</kbd> program.</p>"
-      routes :: [TW.Middleware]
-      routes = [ TW.get "/start" startAuth
-               , TW.get "/" finishAuth
-               ]
-      missing :: TW.ResponderM a
-      missing = TW.send $ TW.html "Not found..."
-  run 8080 $ foldr ($) (TW.notFound missing) routes
+localWebServer :: Environment -> Maybe String -> String -> IO ()
+localWebServer env serv email' = do
+  authPage <- generateAuthPage env serv email'
+  case authPage of
+    Left errmsg -> error errmsg
+    Right authP -> do
+      let startAuth :: TW.ResponderM a
+          startAuth = TW.send $ TW.html $ fromStrict authP
+          finishAuth :: TW.ResponderM a
+          finishAuth = do
+            code :: String <- TW.param "code"
+            authrec <- liftIO $ getAccessToken env serv code
+            case authrec of
+              Left errmsg -> error errmsg
+              Right authr -> do
+                now <- liftIO getCurrentTime
+                let expire = addUTCTime (expires_in authr - 300) now
+                    expDate = formatTime defaultTimeLocale timeStampFormat expire
+                    authRec = authr { exp_date = Just expDate, email = Just email', service = serv }
+                liftIO $ writeAuthRecord env email' authRec
+                TW.send $ TW.html $ BLU.fromString $
+                  printf "<h4>Received new refresh and access tokens for %s</h4>" email'
+                  <> printf "<p>They have been saved encrypted in <kbd>%s/%s.auth</kbd></p>"
+                     (oauth2_dir (config env)) email'
+                  <> printf "<p>You may now quit the waiting <kbd>mailctl</kbd> program.</p>"
+          routes :: [TW.Middleware]
+          routes = [ TW.get "/start" startAuth
+                   , TW.get "/" finishAuth
+                   ]
+          missing :: TW.ResponderM a
+          missing = TW.send $ TW.html "Not found..."
+      run 8080 $ foldr ($) (TW.notFound missing) routes
 
 authorizeEmail :: Environment -> String -> IO ()
 authorizeEmail env email' = do
-  putStrLn $ "To grant OAuth2 access to " ++ email' ++ " visit the local URL below with your browser."
-  putStrLn $ redirect_uri (google $ config env) ++ "/start"
-  _ <- forkIO $ localWebServer env email'
-  putStrLn "Authorization started ... "
-  putStrLn "Hit <Enter> when it has been completed --> "
-  _ <- getLine
-  putStrLn "Now try to fetch some email!"
+  authrec <- readAuthRecord env email'
+  case service authrec of
+    Nothing -> error "authorizeEmail: missing service field in AuthRecord."
+    Just serv -> do
+      case serviceLookup (services env) serv redirect_uri of
+        Nothing -> error "authorizeEmail: missing redirect_uri field in AuthRecord."
+        Just redirect -> do
+          putStrLn $ "To grant OAuth2 access to " ++ email' ++ " visit the local URL below with your browser."
+          putStrLn $ redirect ++ "/start"
+      _ <- forkIO $ localWebServer env (Just serv) email'
+      putStrLn "Authorization started ... "
+      putStrLn "Hit <Enter> when it has been completed --> "
+      _ <- getLine
+      putStrLn "Now try to fetch some email!"
 
 
 -- Utilities for traditional password based email services

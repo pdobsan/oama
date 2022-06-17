@@ -14,6 +14,7 @@ common common
     aeson,
     base >=4.14.3.0,
     bytestring,
+    containers,
     directory,
     hsyslog,
     http-conduit,

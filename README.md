@@ -8,8 +8,8 @@ with email clients like
 or
 [mutt](http://www.mutt.org/)
 running on Linux or Unix like systems. `mailctl` acts as a proxy to password
-managers and takes care of the management of OAuth2 authorization, currently
-for gmail only.
+managers and takes care of the management of OAuth2 authorization with service
+providers like Google, Yahoo etc.
 
 ## Usage
 
@@ -61,7 +61,12 @@ generated. Here is how to do it for `zsh`:
 ## Configuartion
 
 The files in the `configs/` directory are configuration templates for
-`mailctl`, `msmtp` and `fdm`. Edit them to adjust to your environment.
+`mailctl`, `msmtp` and `fdm`. The `configs/services-template.json` file
+contains details for `google`, `microsoft` and `yahoo`. You need to provide
+your own `client_id` and `client_secret` of your application or of a
+suitable FOSS registered application.
+
+Edit them to adjust to your environment.
 
 The base password manager used here is
 [pass](https://www.passwordstore.org/)
