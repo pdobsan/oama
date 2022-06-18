@@ -58,13 +58,13 @@ listAccounts env = do
   TIO.putStrLn "List of accounts fetched:"
   TIO.putStrLn z
 
-fetchAccounts :: FilePath -> [String] -> IO ()
+fetchAccounts :: FilePath -> [EmailAddress] -> IO ()
 fetchAccounts fdmConfig as = do
-  let bs = concat [ ["-a", a] | a <- as ]
+  let bs = concat [ ["-a", unEmailAddress a] | a <- as ]
   (x, _, _) <- P.readProcessWithExitCode "fdm" (["-f", fdmConfig, "-l"] ++ bs ++ ["fetch"]) ""
   if x == ExitSuccess then return () else exitWith x
 
-fetch :: Environment -> [String] -> IO ()
+fetch :: Environment -> [EmailAddress] -> IO ()
 fetch env accounts = do
   let cronEnabled = cron_enabled $ system_state env
       runByCron   = optCron $ options env

@@ -5,6 +5,7 @@
 
 module MailCtl.Environment
   ( loadEnvironment
+  , EmailAddress(..)
   , AuthRecord(..)
   , Program(..)
   , Service(..)
@@ -26,6 +27,9 @@ import System.Directory qualified as D
 import System.Exit (ExitCode (ExitSuccess), exitWith, exitFailure)    
 import System.Process qualified as P    
 
+newtype EmailAddress = EmailAddress { unEmailAddress :: String }
+  deriving (Show, Generic, ToJSON, FromJSON)
+
 data AuthRecord = AuthRecord
   { access_token  :: String
   , expires_in    :: NominalDiffTime
@@ -33,7 +37,7 @@ data AuthRecord = AuthRecord
   , token_type    :: String
   , exp_date      :: Maybe String
   , refresh_token :: Maybe String
-  , email         :: Maybe String
+  , email         :: Maybe EmailAddress
   , service       :: Maybe String
   }
   deriving (Show, Generic, ToJSON, FromJSON)

@@ -13,13 +13,13 @@ main = do
   withSyslog "mailctl" [] Mail $ do
     env <- loadEnvironment
     case optCommand $ options env of
-      Getpwd    emailEntry   -> getEmailPwd env emailEntry
-      Oauth2    emailEntry   -> getEmailAuth env emailEntry
-      Authorize emailEntry   -> authorizeEmail env emailEntry
-      Fetch     emailEntries -> fetch env emailEntries
-      ListEmails             -> listAccounts env
-      Cron StatusCron        -> statusCron env
-      Cron EnableCron        -> enableCron env
-      Cron DisableCron       -> disableCron env
-      PrintEnv               -> pprintEnv env
+      Getpwd    emailAddress   -> getEmailPwd env (EmailAddress emailAddress)
+      Oauth2    emailAddress   -> getEmailAuth env (EmailAddress emailAddress)
+      Authorize emailAddress   -> authorizeEmail env (EmailAddress emailAddress)
+      Fetch     emailAddresses -> fetch env (EmailAddress <$> emailAddresses)
+      ListEmails               -> listAccounts env
+      Cron StatusCron          -> statusCron env
+      Cron EnableCron          -> enableCron env
+      Cron DisableCron         -> disableCron env
+      PrintEnv                 -> pprintEnv env
 

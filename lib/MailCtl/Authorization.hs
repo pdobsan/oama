@@ -39,9 +39,9 @@ import Web.Twain qualified as TW
 -- https://developers.google.com/identity/protocols/oauth2/native-app
 -- The managed credentials are kept in encrypted files using GNU PG.
 
-readAuthRecord :: Environment -> String -> IO AuthRecord
-readAuthRecord env email' = do
-  let gpgFile = oauth2_dir (config env) ++ "/" ++ email' ++ ".auth"
+readAuthRecord :: Environment -> EmailAddress -> IO AuthRecord
+readAuthRecord env email_ = do
+  let gpgFile = oauth2_dir (config env) ++ "/" ++ unEmailAddress email_ ++ ".auth"
   (x, o, e) <- P.readProcessWithExitCode (exec $ decrypt_cmd $ config env)
                                          (args (decrypt_cmd $ config env) ++ [gpgFile]) ""
   if x == ExitSuccess
@@ -52,9 +52,9 @@ readAuthRecord env email' = do
       putStr e
       exitWith x
 
-writeAuthRecord :: Environment -> String -> AuthRecord -> IO ()
-writeAuthRecord env email' rec = do
-  let gpgFile = oauth2_dir (config env) ++ "/" ++ email' ++ ".auth"
+writeAuthRecord :: Environment -> EmailAddress -> AuthRecord -> IO ()
+writeAuthRecord env email_ rec = do
+  let gpgFile = oauth2_dir (config env) ++ "/" ++ unEmailAddress email_ ++ ".auth"
       jsrec = BLU.toString $ encode rec
   (Just h, _, _, p) <- P.createProcess (P.proc (exec $ encrypt_cmd $ config env)
                          (args  (encrypt_cmd $ config env) ++ [gpgFile ++ ".new"]))
@@ -72,16 +72,16 @@ timeStampFormat = "%Y-%m-%d %H:%M %Z"
 
 -- Provide access_token while renewing it when necessary
 
-getEmailAuth :: Environment -> String -> IO ()
-getEmailAuth env email' = do
-  authrec <- getEmailAuth' env email'
+getEmailAuth :: Environment -> EmailAddress -> IO ()
+getEmailAuth env email_ = do
+  authrec <- getEmailAuth' env email_
   case authrec of
     Right rec -> putStrLn $ access_token rec
     Left errmsg -> error errmsg
 
-getEmailAuth' :: Environment -> String -> IO (Either String AuthRecord)
-getEmailAuth' env email' = do
-  authrec <- readAuthRecord env email'
+getEmailAuth' :: Environment -> EmailAddress -> IO (Either String AuthRecord)
+getEmailAuth' env email_ = do
+  authrec <- readAuthRecord env email_
   now <- getCurrentTime
   let expd = fromMaybe "2000-01-01 12:00 UTC" (exp_date authrec)
   if now > parseTimeOrError True defaultTimeLocale timeStampFormat expd
@@ -99,8 +99,8 @@ getEmailAuth' env email' = do
                          , scope = scope newA
                          , token_type = token_type newA
                          }
-          writeAuthRecord env email' authrec'
-          logger Notice ("new token for " ++ email' ++ "; expires at " ++ expDate)
+          writeAuthRecord env email_ authrec'
+          logger Notice ("new token for " ++ unEmailAddress email_ ++ "; expires at " ++ expDate)
           return $ Right authrec'
         else return $ Right authrec
 
@@ -161,23 +161,23 @@ getAccessToken env (Just serv) authcode = do
     Nothing -> error "getAccessToken: missing token_endpoint field in Services."
     Just tokenEndpoint -> fetchAuthRecord tokenEndpoint qs
 
-generateAuthPage :: Environment -> Maybe String -> String -> IO (Either String BSU.ByteString)
+generateAuthPage :: Environment -> Maybe String -> EmailAddress -> IO (Either String BSU.ByteString)
 generateAuthPage _ Nothing _ = return $ Left "generateAuthPage: missing service string"
-generateAuthPage env (Just serv) email' = do
+generateAuthPage env (Just serv) email_ = do
   let ss = services env
       qs = [ ("client_id", serviceLookup ss serv client_id)
            , ("redirect_uri", serviceLookup ss serv redirect_uri)
            , ("response_type", Just "code")
            , ("scope", serviceLookup ss serv auth_scope)
-           , ("login_hint", Just email')
+           , ("login_hint", Just $ unEmailAddress email_)
            ]
   case serviceLookup ss serv auth_endpoint of
     Nothing -> error "generateAuthPage: missing auth_endpoint field in Services."
     Just tokenEndpoint -> runPOSTRequest tokenEndpoint qs
 
-localWebServer :: Environment -> Maybe String -> String -> IO ()
-localWebServer env serv email' = do
-  authPage <- generateAuthPage env serv email'
+localWebServer :: Environment -> Maybe String -> EmailAddress -> IO ()
+localWebServer env serv email_ = do
+  authPage <- generateAuthPage env serv email_
   case authPage of
     Left errmsg -> error errmsg
     Right authP -> do
@@ -193,12 +193,12 @@ localWebServer env serv email' = do
                 now <- liftIO getCurrentTime
                 let expire = addUTCTime (expires_in authr - 300) now
                     expDate = formatTime defaultTimeLocale timeStampFormat expire
-                    authRec = authr { exp_date = Just expDate, email = Just email', service = serv }
-                liftIO $ writeAuthRecord env email' authRec
+                    authRec = authr { exp_date = Just expDate, email = Just email_, service = serv }
+                liftIO $ writeAuthRecord env email_ authRec
                 TW.send $ TW.html $ BLU.fromString $
-                  printf "<h4>Received new refresh and access tokens for %s</h4>" email'
+                  printf "<h4>Received new refresh and access tokens for %s</h4>" (unEmailAddress email_)
                   <> printf "<p>They have been saved encrypted in <kbd>%s/%s.auth</kbd></p>"
-                     (oauth2_dir (config env)) email'
+                     (oauth2_dir (config env)) $ unEmailAddress email_
                   <> printf "<p>You may now quit the waiting <kbd>mailctl</kbd> program.</p>"
           routes :: [TW.Middleware]
           routes = [ TW.get "/start" startAuth
@@ -208,18 +208,18 @@ localWebServer env serv email' = do
           missing = TW.send $ TW.html "Not found..."
       run 8080 $ foldr ($) (TW.notFound missing) routes
 
-authorizeEmail :: Environment -> String -> IO ()
-authorizeEmail env email' = do
-  authrec <- readAuthRecord env email'
+authorizeEmail :: Environment -> EmailAddress -> IO ()
+authorizeEmail env email_ = do
+  authrec <- readAuthRecord env email_
   case service authrec of
     Nothing -> error "authorizeEmail: missing service field in AuthRecord."
     Just serv -> do
       case serviceLookup (services env) serv redirect_uri of
         Nothing -> error "authorizeEmail: missing redirect_uri field in AuthRecord."
         Just redirect -> do
-          putStrLn $ "To grant OAuth2 access to " ++ email' ++ " visit the local URL below with your browser."
+          putStrLn $ "To grant OAuth2 access to " ++ unEmailAddress email_ ++ " visit the local URL below with your browser."
           putStrLn $ redirect ++ "/start"
-      _ <- forkIO $ localWebServer env (Just serv) email'
+      _ <- forkIO $ localWebServer env (Just serv) email_
       putStrLn "Authorization started ... "
       putStrLn "Hit <Enter> when it has been completed --> "
       _ <- getLine
@@ -229,13 +229,13 @@ authorizeEmail env email' = do
 -- Utilities for traditional password based email services
 -- using [pass](https://www.passwordstore.org/) 
 
-getEmailPwd :: Environment -> String -> IO ()
-getEmailPwd env email' = do
-  password <- getEmailPwd' env email'
+getEmailPwd :: Environment -> EmailAddress -> IO ()
+getEmailPwd env email_ = do
+  password <- getEmailPwd' env email_
   putStr password
 
-getEmailPwd' :: Environment -> String -> IO String
-getEmailPwd' env email' = do
+getEmailPwd' :: Environment -> EmailAddress -> IO String
+getEmailPwd' env email_ = do
   psd <- E.lookupEnv "PASSWORD_STORE_DIR"
   case psd of
     Nothing -> do
@@ -245,8 +245,7 @@ getEmailPwd' env email' = do
  where
   getEPwd = do
     (x, o, e) <- P.readProcessWithExitCode (exec (pass_cmd $ config env))
-                                           [head (args (pass_cmd $ config env)) ++ email']
-                                           []
+                       [head (args (pass_cmd $ config env)) ++ unEmailAddress email_] []
     if x == ExitSuccess
       then return $ head (lines o)
       else do
