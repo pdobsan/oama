@@ -17,7 +17,7 @@ providers like Google, Yahoo etc.
 
     mailctl - control an msmpt/fdm/mutt email system
 
-    Usage: mailctl [--version] [-c|--config-file CONFIG] [--run-by-cron] COMMAND
+    Usage: mailctl [--version] [-c|--config-file <config>] [--run-by-cron] COMMAND
 
       mailctl is a program to control an msmpt/fdm/mutt email system, using pass as
       pasword manager, and google OAuth2 method.
@@ -25,12 +25,14 @@ providers like Google, Yahoo etc.
     Available options:
       -h,--help                Show this help text
       --version                Show version
-      -c,--config-file CONFIG  Configuration file
+      -c,--config-file <config>
+                               Configuration file
       --run-by-cron            mailctl invoked by cron
 
     Available commands:
-      getpwd                   get the password of an email entry
-      oauth2                   get the oauth2 access code of an email entry
+      password                 get the password
+      access                   get the access token
+      renew                    renew the access token
       authorize                authorize an email entry for Oauth2
       fetch                    get fdm to fetch all or the given accounts
       cron                     Manage running by cron

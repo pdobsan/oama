@@ -6,6 +6,7 @@ module MailCtl.Authorization
   ( getEmailPwd
   , getEmailAuth
   , authorizeEmail
+  , forceRenew
   )
 where
 
@@ -100,7 +101,7 @@ getEmailAuth' env email_ = do
                          , token_type = token_type newA
                          }
           writeAuthRecord env email_ authrec'
-          logger Notice ("new token for " ++ unEmailAddress email_ ++ "; expires at " ++ expDate)
+          logger Notice $ printf "new acccess token for %s - expires at %s" (unEmailAddress email_) expDate
           return $ Right authrec'
         else return $ Right authrec
 
@@ -112,7 +113,6 @@ updateRequest req xs =
 runPOSTRequest :: String -> [(String, Maybe String)] -> IO (Either String BSU.ByteString)
 runPOSTRequest url queries = do
   req <- parseRequest $ "POST " ++ url
-  -- Either HttpException (Response BSU.ByteString)
   eresp <- try $ httpBS (updateRequest req queries) :: IO (Either HttpException (Response BSU.ByteString))
   case eresp of
     -- hide request containing sensitive information
@@ -145,6 +145,27 @@ renewAccessToken env (Just serv) (Just rft) = do
   case serviceLookup ss serv token_endpoint of
     Nothing -> error "renewAccessToken: missing token_endpoint field in Services."
     Just tokenEndpoint -> fetchAuthRecord tokenEndpoint qs
+
+forceRenew :: Environment -> EmailAddress -> IO ()
+forceRenew env email_ = do
+  authrec <- readAuthRecord env email_
+  now <- getCurrentTime
+  newa <- renewAccessToken env (service authrec) (refresh_token authrec)
+  case newa of
+    Left err -> error err
+    Right newA -> do
+      let expire = addUTCTime (expires_in newA - 300) now
+          expDate = formatTime defaultTimeLocale timeStampFormat expire
+          authrec' = authrec { access_token = access_token newA
+                     , expires_in = expires_in newA, exp_date = Just expDate
+                     -- despite of google's doc refresh_token is not returned!
+                     -- , refresh_token = refresh_token newA
+                     , scope = scope newA
+                     , token_type = token_type newA
+                     }
+      writeAuthRecord env email_ authrec'
+      logger Notice $ printf "new acccess token for %s - expires at %s" (unEmailAddress email_) expDate
+      printf "Obtained new acccess token for %s - expires at %s.\n" (unEmailAddress email_) expDate
 
 
 -- initial registration for authorization credentials

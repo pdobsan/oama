@@ -15,6 +15,7 @@ main = do
     case optCommand $ options env of
       Getpwd emailAddress             -> getEmailPwd env (EmailAddress emailAddress)
       Oauth2 emailAddress             -> getEmailAuth env (EmailAddress emailAddress)
+      Renew emailAddress              -> forceRenew env (EmailAddress emailAddress)
       Authorize servName emailAddress -> authorizeEmail env servName (EmailAddress emailAddress)
       Fetch emailAddresses            -> fetch env (EmailAddress <$> emailAddresses)
       ListEmails                      -> listAccounts env

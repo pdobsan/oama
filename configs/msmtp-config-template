@@ -24,7 +24,7 @@ account default: local
 account YOUR_EMAIL_NAME@EMAIL_SERVICE.COM
 from YOUR_EMAIL_NAME@EMAIL_SERVICE.COM
 user YOUR_EMAIL_NAME@EMAIL_SERVICE.COM
-passwordeval mailctl getpwd YOUR_EMAIL_NAME@EMAIL_SERVICE.COM
+passwordeval mailctl password YOUR_EMAIL_NAME@EMAIL_SERVICE.COM
 host smtp.EMAIL_SERVICE.COM
 port 465
 tls_starttls off
@@ -40,7 +40,7 @@ account YOUR_EMAIL_NAME@gmail.com
 from YOUR_EMAIL_NAME@gmail.com
 user YOUR_EMAIL_NAME@gmail.com
 auth oauthbearer
-passwordeval mailctl oauth2 YOUR_EMAIL_NAME@gmail.com
+passwordeval mailctl access YOUR_EMAIL_NAME@gmail.com
 host smtp.gmail.com
 port 587
 tls on
