@@ -46,7 +46,7 @@ readAuthRecord env email_ = do
                                          (args (decrypt_cmd $ config env) ++ [gpgFile]) ""
   if x == ExitSuccess
     then case eitherDecode' (BLU.fromString o) :: Either String AuthRecord of
-              Left err -> error err
+              Left err -> error $ "readAuthRecord:\n" ++ err
               Right rec -> return rec
     else do
       putStr e
@@ -77,7 +77,7 @@ getEmailAuth env email_ = do
   authrec <- getEmailAuth' env email_
   case authrec of
     Right rec -> putStrLn $ access_token rec
-    Left errmsg -> error errmsg
+    Left errmsg -> error $ "getEmailAuth:\n" ++ errmsg
 
 getEmailAuth' :: Environment -> EmailAddress -> IO (Either String AuthRecord)
 getEmailAuth' env email_ = do
@@ -127,7 +127,9 @@ fetchAuthRecord url queries = do
     Left err -> return $ Left err
     Right resp ->
       case eitherDecodeStrict resp :: Either String AuthRecord of
-        Left err -> return $ Left err
+        Left err -> do
+          putStrLn $ BSU.toString resp
+          return $ Left $ "fetchAuthRecord: " ++ err
         Right rec -> return $ Right rec
 
 renewAccessToken :: Environment -> Maybe String -> Maybe String -> IO (Either String AuthRecord)
@@ -179,7 +181,7 @@ localWebServer :: Environment -> Maybe String -> EmailAddress -> IO ()
 localWebServer env serv email_ = do
   authPage <- generateAuthPage env serv email_
   case authPage of
-    Left errmsg -> error errmsg
+    Left errmsg -> error $ "localWebServer:\n" ++ errmsg
     Right authP -> do
       let startAuth :: TW.ResponderM a
           startAuth = TW.send $ TW.html $ fromStrict authP
@@ -188,7 +190,8 @@ localWebServer env serv email_ = do
             code :: String <- TW.param "code"
             authrec <- liftIO $ getAccessToken env serv code
             case authrec of
-              Left errmsg -> error errmsg
+              Left errmsg -> do
+                error $ "localWebServer:\n" ++ errmsg
               Right authr -> do
                 now <- liftIO getCurrentTime
                 let expire = addUTCTime (expires_in authr - 300) now
@@ -198,7 +201,7 @@ localWebServer env serv email_ = do
                 TW.send $ TW.html $ BLU.fromString $
                   printf "<h4>Received new refresh and access tokens for %s</h4>" (unEmailAddress email_)
                   <> printf "<p>They have been saved encrypted in <kbd>%s/%s.auth</kbd></p>"
-                     (oauth2_dir (config env)) $ unEmailAddress email_
+                             (oauth2_dir (config env))  (unEmailAddress email_)
                   <> printf "<p>You may now quit the waiting <kbd>mailctl</kbd> program.</p>"
           routes :: [TW.Middleware]
           routes = [ TW.get "/start" startAuth
@@ -208,9 +211,27 @@ localWebServer env serv email_ = do
           missing = TW.send $ TW.html "Not found..."
       run 8080 $ foldr ($) (TW.notFound missing) routes
 
-authorizeEmail :: Environment -> EmailAddress -> IO ()
-authorizeEmail env email_ = do
-  authrec <- readAuthRecord env email_
+makeAuthRecord :: Environment -> String -> EmailAddress -> AuthRecord
+makeAuthRecord env servName email_ =
+  let Services services_ = services env
+    in case lookup servName services_ of
+        Nothing -> error $ "Can't find such service: " ++ servName
+        Just serv ->
+          AuthRecord "access_token_palce_holder"
+                     1
+                     (auth_scope serv)
+                     "Bearer"
+                     (Just "2000-01-01 12:00 UTC")
+                     (Just "refresh_token_place_holder")
+                     (Just email_)
+                     (Just servName)
+
+authorizeEmail :: Environment -> String -> EmailAddress -> IO ()
+authorizeEmail env servName email_ = do
+  authFileExists <- D.doesFileExist $ oauth2_dir (config env) ++ "/" ++ unEmailAddress email_ ++ ".auth"
+  authrec <- if authFileExists
+              then readAuthRecord env email_
+              else return $ makeAuthRecord env servName email_
   case service authrec of
     Nothing -> error "authorizeEmail: missing service field in AuthRecord."
     Just serv -> do

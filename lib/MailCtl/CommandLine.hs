@@ -17,7 +17,7 @@ data Opts = Opts
   }
   deriving (Eq, Show)
 
-data Command = Getpwd String | Oauth2 String | Authorize String |
+data Command = Getpwd String | Oauth2 String | Authorize String String |
                ListEmails | PrintEnv | Fetch [String] | Cron CronOps
       deriving (Eq, Show)
 
@@ -36,7 +36,7 @@ versionOption = do
 
 programOptions :: Parser Opts
 programOptions =
-  Opts <$> strOption (long "config-file" <> short 'c' <> metavar "CONFIG"
+  Opts <$> strOption (long "config-file" <> short 'c' <> metavar "config"
            <> value "/home/peter/.config/mailctl/config.json" <> help "Configuration file")
     <*> switch ( long "run-by-cron" <> help "mailctl invoked by cron" )
     <*> hsubparser (getpwd <> oauth2 <> authorize <> fetch <> cron <> listEmails <> printEnv)
@@ -61,22 +61,23 @@ disableCron = flag' DisableCron ( long "disable" <> help "Disable running by cro
 fetch :: Mod CommandFields Command
 fetch = command "fetch" (info fetchOptions (progDesc "get fdm to fetch all or the given accounts"))
 fetchOptions :: Parser Command
-fetchOptions = Fetch <$> many (argument str (metavar "EMAIL ..." <> help "Email entries"))
+fetchOptions = Fetch <$> many (argument str (metavar "email ..." <> help "Email addresses"))
 
 getpwd :: Mod CommandFields Command
 getpwd = command "getpwd" (info getPwdOptions (progDesc "get the password of an email entry"))
 getPwdOptions :: Parser Command
-getPwdOptions = Getpwd <$> strArgument (metavar "EMAIL" <> help "Email entry")
+getPwdOptions = Getpwd <$> strArgument (metavar "email" <> help "Email address")
 
 oauth2 :: Mod CommandFields Command
 oauth2 = command "oauth2" (info oauth2Options (progDesc "get the oauth2 access code of an email entry"))
 oauth2Options :: Parser Command
-oauth2Options = Oauth2 <$> strArgument (metavar "EMAIL" <> help "Email entry")
+oauth2Options = Oauth2 <$> strArgument (metavar "email" <> help "Email address")
 
 authorize :: Mod CommandFields Command
 authorize = command "authorize" (info authorizeOptions (progDesc "authorize an email entry for Oauth2"))
 authorizeOptions :: Parser Command
-authorizeOptions = Authorize <$> strArgument (metavar "EMAIL" <> help "Email entry")
+authorizeOptions = Authorize <$> strArgument (metavar "service" <> help "Service name")
+                             <*> strArgument (metavar "email" <> help "Email address")
 
 listEmails :: Mod CommandFields Command
 listEmails = command "list" (info (pure ListEmails) (progDesc "list all accounts in fdm's config"))

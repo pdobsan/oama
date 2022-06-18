@@ -89,9 +89,8 @@ data Environment = Environment
   deriving Show
 
 serviceLookup :: Services -> String -> (Service -> String) -> Maybe String
-serviceLookup (Services as) serv field =
-  let s = lookup serv as
-  in case s of
+serviceLookup (Services services_) servName field =
+  case lookup servName services_ of
     Nothing -> Nothing
     Just s' -> Just $ field s'
 
@@ -99,7 +98,7 @@ readServices :: FilePath -> IO Services
 readServices pfile = do
   ps <- eitherDecodeFileStrict' pfile :: IO (Either String Services)
   case ps of
-    Left err -> error err
+    Left  err -> error err
     Right ps' -> return ps'
 
 loadEnvironment :: IO Environment
