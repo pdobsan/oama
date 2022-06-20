@@ -4,7 +4,7 @@
 authorization of OAuth2 credentials.
 
 Many IMAP/SMTP clients, like [msmpt](https://marlam.de/msmtp/),
-[fdm](https://github.com/nicm/fdm)
+[fdm](https://github.com/nicm/fdm),
 [neomutt](https://github.com/neomutt/neomutt) or
 [mutt](http://www.mutt.org/) can use OAuth2 access tokens but lack the
 ability to renew and/or authorize OAuth2 credentials. The purpose of
