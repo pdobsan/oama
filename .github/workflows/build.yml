@@ -40,5 +40,5 @@ jobs:
     - name: Build
       run: |
         cabal build all
-        cabal install --install-method=copy --enable-executable-stripping
+        cabal install --install-method=copy --overwrite-policy=always --enable-executable-stripping
 
