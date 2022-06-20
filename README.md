@@ -1,22 +1,26 @@
 # mailctl
 
-Mailctl provides IMAP/SMTP clients with the capabilities of renewal and
+`mailctl` provides IMAP/SMTP clients with the capabilities of renewal and
 authorization of OAuth2 credentials.
 
-Many IMAP/SMTP clients, like
-[msmpt](https://marlam.de/msmtp/),
+Many IMAP/SMTP clients, like [msmpt](https://marlam.de/msmtp/),
 [fdm](https://github.com/nicm/fdm)
-[neomutt](https://github.com/neomutt/neomutt)
-or
-[mutt](http://www.mutt.org/)
-can use OAuth2 access tokens but lack the ability to renew and/or authorize
-OAuth2 credentials. The purpose of `mailctl` is to provide these missing
-capabilities by acting as a kind of smart password manager. In particular,
-access token renewal happens automatically in the background transparent to
-the user.
+[neomutt](https://github.com/neomutt/neomutt) or
+[mutt](http://www.mutt.org/) can use OAuth2 access tokens but lack the
+ability to renew and/or authorize OAuth2 credentials. The purpose of
+`mailctl` is to provide these missing capabilities by acting as a kind of
+smart password manager. In particular, access token renewal happens
+automatically in the background transparent to the user.
 
-It has been successfully used with Google/Gmail, operation with other Oauth2
-service providers are planned.
+If an IMAP/SMTP client cannot even use an OAuth2 access token itself it
+still may be "wrapped" with `fdm` and `msmtp` with the help of `mailctl`.
+
+`mailctl` also has some functionalities to manage the orchestration of
+a mailing system comprised of `msmtp`, `fdm`, and `(neo)mutt` or similar
+ones.
+
+`mailctl` has been successfully used with Google/Gmail, operation with other
+Oauth2 service providers are planned.
 
 ## Usage
 
