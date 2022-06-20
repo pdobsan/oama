@@ -4,6 +4,10 @@ configs/config.json
 configs/services.json
 tmp/
 
+# image files
+*.png
+*.jpg
+
 # Haskell
 # compilation
 *.errors

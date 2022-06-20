@@ -24,8 +24,8 @@ data Command = Getpwd String | Oauth2 String | Renew String | Authorize String S
 optsParser :: ParserInfo Opts
 optsParser = info
   (helper <*> versionOption <*> programOptions)
-  (fullDesc <> progDesc "mailctl is a program to control an msmpt/fdm/mutt email system, using pass as pasword manager, and google OAuth2 method."
-  <> header "mailctl - control an msmpt/fdm/mutt email system"
+  (fullDesc <> progDesc "Mailctl provides IMAP/SMTP clients with the capabilities of renewal and authorization of OAuth2 credentials."
+  <> header "mailctl - Provide OAuth2 renewal and authorization capabilities."
   )
 
 versionOption :: Parser (a -> a)
@@ -59,33 +59,33 @@ disableCron :: Parser CronOps
 disableCron = flag' DisableCron ( long "disable" <> help "Disable running by cron." )
 
 fetch :: Mod CommandFields Command
-fetch = command "fetch" (info fetchOptions (progDesc "get fdm to fetch all or the given accounts"))
+fetch = command "fetch" (info fetchOptions (progDesc "Get fdm to fetch all or the given accounts"))
 fetchOptions :: Parser Command
 fetchOptions = Fetch <$> many (argument str (metavar "<email> ..." <> help "Email addresses"))
 
 getpwd :: Mod CommandFields Command
-getpwd = command "password" (info getPwdOptions (progDesc "get the password"))
+getpwd = command "password" (info getPwdOptions (progDesc "Get the password for email"))
 getPwdOptions :: Parser Command
 getPwdOptions = Getpwd <$> strArgument (metavar "<email>" <> help "Email address")
 
 oauth2 :: Mod CommandFields Command
-oauth2 = command "access" (info oauth2Options (progDesc "get the access token"))
+oauth2 = command "access" (info oauth2Options (progDesc "Get the access token for email"))
 oauth2Options :: Parser Command
 oauth2Options = Oauth2 <$> strArgument (metavar "<email>" <> help "Email address")
 
 renew :: Mod CommandFields Command
-renew = command "renew" (info renewOptions (progDesc "renew the access token"))
+renew = command "renew" (info renewOptions (progDesc "Renew the access token of email"))
 renewOptions :: Parser Command
 renewOptions = Renew <$> strArgument (metavar "<email>" <> help "Email address")
 
 authorize :: Mod CommandFields Command
-authorize = command "authorize" (info authorizeOptions (progDesc "authorize an email entry for Oauth2"))
+authorize = command "authorize" (info authorizeOptions (progDesc "Authorize OAuth2 for service/email"))
 authorizeOptions :: Parser Command
 authorizeOptions = Authorize <$> strArgument (metavar "<service>" <> help "Service name")
                              <*> strArgument (metavar "<email>" <> help "Email address")
 
 listEmails :: Mod CommandFields Command
-listEmails = command "list" (info (pure ListEmails) (progDesc "list all accounts in fdm's config"))
+listEmails = command "list" (info (pure ListEmails) (progDesc "List all accounts in fdm's config"))
 
 printEnv :: Mod CommandFields Command
 printEnv = command "printenv" (info (pure PrintEnv) (progDesc "Print the current Environment"))

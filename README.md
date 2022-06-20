@@ -1,26 +1,33 @@
 # mailctl
 
-`mailctl` is a utility to control an email system comprised of
+Mailctl provides IMAP/SMTP clients with the capabilities of renewal and
+authorization of OAuth2 credentials.
+
+Many IMAP/SMTP clients, like
 [msmpt](https://marlam.de/msmtp/),
 [fdm](https://github.com/nicm/fdm)
-with email clients like
 [neomutt](https://github.com/neomutt/neomutt)
 or
 [mutt](http://www.mutt.org/)
-running on Linux or Unix like systems. `mailctl` acts as a proxy to password
-managers and takes care of the management of OAuth2 authorization with service
-providers like Google, Yahoo etc.
+can use OAuth2 access tokens but lack the ability to renew and/or authorize
+OAuth2 credentials. The purpose of `mailctl` is to provide these missing
+capabilities by acting as a kind of smart password manager. In particular,
+access token renewal happens automatically in the background transparent to
+the user.
+
+It has been successfully used with Google/Gmail, operation with other Oauth2
+service providers are planned.
 
 ## Usage
 
 `mailctl -h` generates this help message:
 
-    mailctl - control an msmpt/fdm/mutt email system
+    mailctl - Provide OAuth2 renewal and authorization capabilities.
 
     Usage: mailctl [--version] [-c|--config-file <config>] [--run-by-cron] COMMAND
 
-      mailctl is a program to control an msmpt/fdm/mutt email system, using pass as
-      pasword manager, and google OAuth2 method.
+      Mailctl provides IMAP/SMTP clients with the capabilities of renewal and
+      authorization of OAuth2 credentials.
 
     Available options:
       -h,--help                Show this help text
@@ -30,13 +37,13 @@ providers like Google, Yahoo etc.
       --run-by-cron            mailctl invoked by cron
 
     Available commands:
-      password                 get the password
-      access                   get the access token
-      renew                    renew the access token
-      authorize                authorize an email entry for Oauth2
-      fetch                    get fdm to fetch all or the given accounts
+      password                 Get the password for email
+      access                   Get the access token for email
+      renew                    Renew the access token of email
+      authorize                Authorize OAuth2 for service/email
+      fetch                    Get fdm to fetch all or the given accounts
       cron                     Manage running by cron
-      list                     list all accounts in fdm's config
+      list                     List all accounts in fdm's config
       printenv                 Print the current Environment
 
 More detailed help for individual commands can also be generated:
