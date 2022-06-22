@@ -49,7 +49,7 @@ jobs:
           cabal build all
           cabal install --install-method=copy --overwrite-policy=always --enable-executable-stripping
           mailctl --version
-          cp .cabal/bin/mailctl mailctl-${{ runner.os }}-${{ matrix.ghc }}
+          cp ~/.cabal/bin/mailctl mailctl-${{ runner.os }}-${{ matrix.ghc }}
           sha256 mailctl-${{ runner.os }}-${{ matrix.ghc }} > mailctl-${{ runner.os }}-${{ matrix.ghc }}.sha256
 
       - name: Release
