@@ -100,6 +100,22 @@ authorized `gpg-agent` is running.
 
 ## Installation
 
+### Compiled static binaries
+
+Each release contains a compiled static executable of `mailctl` built on the
+most recent Ubuntu LTS platform. That should work on most Linux
+distributions. You can download the latest one from
+[here](https://github.com/pdobsan/mailctl/releases/latest). Check the sha256
+check sum of the downloaded file. Rename it to `mailctl`, made it executable
+and put somewhere in your search path.
+
+### Building from sources
+
+To build `mailctl` from source you need a Haskell development environment.
+Either your platform package system can provide this or you can use
+[ghcup](https://www.haskell.org/ghcup/). Once you have the `ghc` Haskell
+compiler and `cabal` etc. installed, follow the steps below:
+
 Clone this repository and invoke `cabal`:
 
     git clone https://github.com/pdobsan/mailctl.git
