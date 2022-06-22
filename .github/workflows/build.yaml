@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@Latest
+        uses: actions/checkout@v3
 
       - name: Setup Haskell
         uses: haskell/actions/setup@Latest
