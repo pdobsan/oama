@@ -1,0 +1,52 @@
+name: Build
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        ghc: [latest, '8.10.7']
+        cabal: [latest]
+        os: [ubuntu-latest]
+    name: Haskell GHC ${{ matrix.ghc }}
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@Latest
+
+      - name: Setup Haskell
+        uses: haskell/actions/setup@Latest
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: ${{ matrix.cabal }}
+
+      - name: Cache
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-cabal
+        with:
+          path: ~/.cabal
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/*.cabal') }}-${{ hashFiles('**/cabal.project') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          cabal update
+          cabal build all --only-dependencies
+
+      - name: Build
+        run: |
+          export PATH=~/.cabal/bin:$PATH
+          cabal build all
+          cabal install --install-method=copy --overwrite-policy=always --enable-executable-stripping
+          mailctl --version
+
