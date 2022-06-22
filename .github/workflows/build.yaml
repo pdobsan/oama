@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        ghc: ['9.2.3', '8.10.7']
+        ghc: ['9.2.3']
         cabal: [latest]
         os: [ubuntu-latest]
     name: Haskell GHC ${{ matrix.ghc }}
@@ -39,9 +39,7 @@ jobs:
             ${{ runner.os }}-
 
       - name: Install dependencies
-        run: |
-          cabal update
-          cabal build all --only-dependencies
+        run: cabal build all --only-dependencies
 
       - name: Build
         run: |
@@ -49,16 +47,15 @@ jobs:
           cabal build all
           cabal install --install-method=copy --overwrite-policy=always --enable-executable-stripping
           mailctl --version
-          cp ~/.cabal/bin/mailctl mailctl-${{ runner.os }}-${{ matrix.ghc }}
-          sha256sum mailctl-${{ runner.os }}-${{ matrix.ghc }} > mailctl-${{ runner.os }}-${{ matrix.ghc }}.sha256
+          EXE_NAME=mailctl-$(mailctl --version | head -1 | cut -d ' ' -f 3)--${{ runner.os }}-ghc-${{ matrix.ghc }}
+
+          cp ~/.cabal/bin/mailctl $EXE_NAME
+          sha256sum $EXE_NAME > $EXE_NAME.sha256
           ls -l
 
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          prerelease: true
-          files: |
-            mailctl-${{ runner.os }}-${{ matrix.ghc }}
-            mailctl-${{ runner.os }}-${{ matrix.ghc }}.sha256
+          files: mailctl-*
 
