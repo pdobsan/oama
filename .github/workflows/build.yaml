@@ -49,4 +49,14 @@ jobs:
           cabal build all
           cabal install --install-method=copy --overwrite-policy=always --enable-executable-stripping
           mailctl --version
+          cp .cabal/bin/mailctl mailctl-${{ runner.os }}-${{ matrix.ghc }}
+          sha256 mailctl-${{ runner.os }}-${{ matrix.ghc }} > mailctl-${{ runner.os }}-${{ matrix.ghc }}.sha256
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            mailctl-${{ runner.os }}-${{ matrix.ghc }}
+            mailctl-${{ runner.os }}-${{ matrix.ghc }}.sha256
 
