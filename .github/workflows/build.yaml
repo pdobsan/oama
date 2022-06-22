@@ -51,11 +51,13 @@ jobs:
           mailctl --version
           cp ~/.cabal/bin/mailctl mailctl-${{ runner.os }}-${{ matrix.ghc }}
           sha256sum mailctl-${{ runner.os }}-${{ matrix.ghc }} > mailctl-${{ runner.os }}-${{ matrix.ghc }}.sha256
+          ls -l
 
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
+          prerelease: true
           files: |
             mailctl-${{ runner.os }}-${{ matrix.ghc }}
             mailctl-${{ runner.os }}-${{ matrix.ghc }}.sha256
