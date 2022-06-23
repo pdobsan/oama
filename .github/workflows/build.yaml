@@ -50,7 +50,7 @@ jobs:
           cabal build all
           cabal install --install-method=copy --overwrite-policy=always --enable-executable-stripping
           mailctl --version
-          EXE_NAME=mailctl-$(mailctl --version | head -1 | cut -d ' ' -f 3)--${{ runner.os }}-ghc-${{ matrix.ghc }}
+          EXE_NAME=mailctl-$(mailctl --version | head -1 | cut -d ' ' -f 3)-${{ runner.os }}
 
           cp ~/.cabal/bin/mailctl $EXE_NAME
           sha256sum $EXE_NAME > $EXE_NAME.sha256
@@ -60,5 +60,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
+          name: mailctl-${{ tag_name }}
           files: mailctl-*
 
