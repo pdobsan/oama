@@ -109,6 +109,11 @@ distributions. You can download the latest one from
 check sum of the downloaded file. Rename it to `mailctl`, made it executable
 and put somewhere in your search path.
 
+#### Archlinux
+
+For Archlinux users there is also a package on AUR:
+[mailctl-bin](https://aur.archlinux.org/packages/mailctl-bin)
+
 ### Building from sources
 
 To build `mailctl` from source you need a Haskell development environment.
