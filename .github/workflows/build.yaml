@@ -50,8 +50,7 @@ jobs:
           cabal build all
           cabal install --install-method=copy --overwrite-policy=always --enable-executable-stripping
           mailctl --version
-          EXE_NAME=mailctl-$(mailctl --version | head -1 | cut -d ' ' -f 3)-${{ runner.os }}
-
+          EXE_NAME=mailctl-$(grep '^version:' mailctl.cabal | awk '{print $2}')-${{ runner.os }}
           cp ~/.cabal/bin/mailctl $EXE_NAME
           sha256sum $EXE_NAME > $EXE_NAME.sha256
           ls -l
