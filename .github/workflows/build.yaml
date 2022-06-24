@@ -50,14 +50,28 @@ jobs:
           cabal build all
           cabal install --install-method=copy --overwrite-policy=always --enable-executable-stripping
           mailctl --version
-          EXE_NAME=mailctl-$(grep '^version:' mailctl.cabal | awk '{print $2}')-${{ runner.os }}
+          VERSION=$(grep '^version:' mailctl.cabal | awk '{print $2}')
+          EXE_NAME=mailctl-$VERSION-${{ runner.os }}
           cp ~/.cabal/bin/mailctl $EXE_NAME
           sha256sum $EXE_NAME > $EXE_NAME.sha256
+          sed -e "s/^pkgver=.*$/pkgver=$VERSION/" aur/PKGBUILD >PKGBUILD
           ls -l
 
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
+          body_path: Release.md
           files: mailctl-*
+
+      - name: Release AUR package
+        uses: KSXGitHub/github-actions-deploy-aur@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          pkgname: mailctl
+          pkgbuild: ./PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: Update AUR package
 
