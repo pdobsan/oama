@@ -26,6 +26,15 @@ Oauth2 service providers are planned.
 
 ## Usage
 
+Before `mailctl` is fully operational you need to create the necessary
+configuration files. See details in [Configuration](#configuration). Make
+sure that all the directories referenced in the configuration exist.
+
+After configuration the very first command you must run is `authorize`. That
+is an interactive process involving a browser since during it you need to
+login and authorize access to your email account. `mailctl` will lead you
+through this process.
+
 `mailctl -h` generates this help message:
 
     mailctl - Provide OAuth2 renewal and authorization capabilities.
@@ -58,16 +67,17 @@ configuration details are optional.
 
 More detailed help for individual commands can also be generated:
 
-    % mailctl cron -h
-    Usage: mailctl cron [--status | --enable | --disable]
+    % mailctl authorize -h
 
-      Manage running by cron
+    Usage: mailctl authorize <service> <email>
+
+      Authorize OAuth2 for service/email
 
     Available options:
-      --status                 Show cron status.
-      --enable                 Enable running by cron.
-      --disable                Disable running by cron.
+      <service>                Service name
+      <email>                  Email address
       -h,--help                Show this help text
+
 
 ### Shell completion
  
@@ -77,7 +87,7 @@ generated. Here is how to do it for `zsh`:
       mailctl --zsh-completion-script $(which mailctl) > ~/.local/share/zsh/site-functions/_mailctl
 
 
-## Configuartion
+## Configuration
 
 The files in the `configs/` directory are configuration templates for
 `mailctl`, `msmtp` and `fdm`. The `configs/services-template.json` file
@@ -85,7 +95,8 @@ contains details for `google`, `microsoft` and `yahoo`. You need to provide
 your own `client_id` and `client_secret` of your application or of a
 suitable FOSS registered application.
 
-Edit them to adjust to your environment.
+Edit them to adjust to your environment. When you are done run
+`mailctl authorize <service> <email>`.
 
 The base password manager used here is
 [pass](https://www.passwordstore.org/)

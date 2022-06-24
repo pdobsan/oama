@@ -1,4 +1,3 @@
-- Made the use of `pass` and the related configuration optional.
-- Automatic release of AUR package.
-- Fixed AUR package name.
-- Fixed AUR ${pkgver} interpolation.
+- More detailed instructions about the initial authorization step.
+
+- Give better error message if there are no authorization records found.
