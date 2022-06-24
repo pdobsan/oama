@@ -52,6 +52,10 @@ Oauth2 service providers are planned.
       list                     List all accounts in fdm's config
       printenv                 Print the current Environment
 
+The various functionalities of `mailctl` are quite loosely coupled. In
+particular, using a password manager (like `pass`) and the related
+configuration details are optional.
+
 More detailed help for individual commands can also be generated:
 
     % mailctl cron -h

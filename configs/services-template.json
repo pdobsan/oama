@@ -11,6 +11,8 @@
     }
   ],
   [
+    # this is not ready yet
+    # if you manage to get it working please let me know
     "microsoft",
     {
       "auth_endpoint": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
@@ -22,6 +24,8 @@
     }
   ],
   [
+    # this is not ready yet
+    # if you manage to get it working please let me know
     "yahoo",
     {
       "auth_endpoint": "https://api.login.yahoo.com/oauth2/request_auth",

@@ -65,7 +65,7 @@ jobs:
           files: mailctl-*
 
       - name: Release AUR package
-        uses: KSXGitHub/github-actions-deploy-aur@v2
+        uses: KSXGitHub/github-actions-deploy-aur@v2.2.5
         if: startsWith(github.ref, 'refs/tags/')
         with:
           pkgname: mailctl
