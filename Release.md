@@ -1,0 +1,2 @@
+- Made the use of `pass` and the related configuration optional.
+- Automatic release of AUR package 
