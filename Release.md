@@ -1,3 +1,4 @@
 - Made the use of `pass` and the related configuration optional.
-- Automatic release of AUR package 
+- Automatic release of AUR package.
 - Fixed AUR package name.
+- Fixed AUR ${pkgver} interpolation.
