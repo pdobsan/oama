@@ -28,7 +28,7 @@ import Network.HTTP.Simple
 import Network.Wai.Handler.Warp (run)
 import System.Directory qualified as D
 import System.Environment qualified as E
-import System.Exit (ExitCode (ExitSuccess), exitWith)
+import System.Exit (ExitCode (ExitSuccess), exitWith, exitFailure)
 import System.IO qualified as IO
 import System.Posix.Syslog (Priority(..))
 import System.Process qualified as P
@@ -274,23 +274,33 @@ authorizeEmail env servName email_ = do
 getEmailPwd :: Environment -> EmailAddress -> IO ()
 getEmailPwd env email_ = do
   password <- getEmailPwd' env email_
-  putStr password
+  putStrLn password
 
 getEmailPwd' :: Environment -> EmailAddress -> IO String
 getEmailPwd' env email_ = do
   psd <- E.lookupEnv "PASSWORD_STORE_DIR"
   case psd of
     Nothing -> do
-      E.setEnv "PASSWORD_STORE_DIR" (password_store $ config env)
-      getEPwd
+      case password_store $ config env of
+        Just password_store' -> do
+          E.setEnv "PASSWORD_STORE_DIR" password_store'
+          getEPwd
+        Nothing -> do
+          putStrLn "getEmailPwd': there is no 'password_store' configured nor PASSWORD_STORE_DIR environment variable set."
+          exitFailure
     _ -> getEPwd
  where
   getEPwd = do
-    (x, o, e) <- P.readProcessWithExitCode (exec (pass_cmd $ config env))
-                       [head (args (pass_cmd $ config env)) ++ unEmailAddress email_] []
-    if x == ExitSuccess
-      then return $ head (lines o)
-      else do
-        putStr e
-        exitWith x
+    case pass_cmd $ config env of
+      Just pass_cmd' -> do
+        (x, o, e) <- P.readProcessWithExitCode (exec pass_cmd')
+                       [head (args pass_cmd') ++ unEmailAddress email_] []
+        if x == ExitSuccess
+          then return $ head (lines o)
+          else do
+            putStr e
+            exitWith x
+      Nothing -> do
+        putStrLn "getEmailPwd': there is no 'pass_cmd' configured."
+        exitFailure
 

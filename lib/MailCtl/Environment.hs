@@ -52,10 +52,10 @@ data Configuration = Configuration
   { fdm_config     :: FilePath
   , fdm_accounts   :: FilePath
   , cron_indicator :: FilePath
-  , password_store :: FilePath
+  , password_store :: Maybe FilePath
   , oauth2_dir     :: FilePath
   , services_file  :: FilePath
-  , pass_cmd       :: Program
+  , pass_cmd       :: Maybe Program
   , decrypt_cmd    :: Program
   , encrypt_cmd    :: Program
   }
