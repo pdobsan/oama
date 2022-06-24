@@ -43,15 +43,22 @@ import Web.Twain qualified as TW
 readAuthRecord :: Environment -> EmailAddress -> IO AuthRecord
 readAuthRecord env email_ = do
   let gpgFile = oauth2_dir (config env) ++ "/" ++ unEmailAddress email_ ++ ".auth"
-  (x, o, e) <- P.readProcessWithExitCode (exec $ decrypt_cmd $ config env)
-                                         (args (decrypt_cmd $ config env) ++ [gpgFile]) ""
-  if x == ExitSuccess
-    then case eitherDecode' (BLU.fromString o) :: Either String AuthRecord of
-              Left err -> error $ "readAuthRecord:\n" ++ err
-              Right rec -> return rec
+  authRecExist <- D.doesFileExist gpgFile
+  if authRecExist
+    then do
+      (x, o, e) <- P.readProcessWithExitCode (exec $ decrypt_cmd $ config env)
+                                             (args (decrypt_cmd $ config env) ++ [gpgFile]) ""
+      if x == ExitSuccess
+        then case eitherDecode' (BLU.fromString o) :: Either String AuthRecord of
+                  Left err -> error $ "readAuthRecord:\n" ++ err
+                  Right rec -> return rec
+        else do
+          putStr e
+          exitWith x
     else do
-      putStr e
-      exitWith x
+      putStrLn $ "Can't find authorization record for " ++ unEmailAddress email_
+      putStrLn "You must run the 'authorize' command before using other operations."
+      exitFailure
 
 writeAuthRecord :: Environment -> EmailAddress -> AuthRecord -> IO ()
 writeAuthRecord env email_ rec = do
