@@ -89,11 +89,11 @@ generated. Here is how to do it for `zsh`:
 
 ## Configuration
 
-The files in the `configs/` directory are configuration templates for
-`mailctl`, `msmtp` and `fdm`. The `configs/services-template.json` file
-contains details for `google`, `microsoft` and `yahoo`. You need to provide
-your own `client_id` and `client_secret` of your application or of a
-suitable FOSS registered application.
+The configuration files for `mailctl` are in YAML. The files in the
+`configs/` directory are templates for `mailctl`, `msmtp` and `fdm`. The
+`configs/services-template.yaml` file contains details for `google`,
+`microsoft`. You need to provide your own `client_id` and `client_secret` of
+your application or of a suitable FOSS registered application.
 
 Edit them to adjust to your environment. When you are done run
 `mailctl authorize <service> <email>`.

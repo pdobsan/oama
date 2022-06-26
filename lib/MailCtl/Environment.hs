@@ -9,7 +9,7 @@ module MailCtl.Environment
   , AuthRecord(..)
   , Program(..)
   , Service(..)
-  , Services(..)
+  , Services
   , serviceLookup 
   , Configuration(..)
   , SystemState(..)
@@ -17,9 +17,11 @@ module MailCtl.Environment
   )
 where
 
-import Data.Aeson
+import Data.Map (Map)
+import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Time.Clock
+import Data.Yaml
 import GHC.Generics
 import MailCtl.CommandLine
 import Options.Applicative (execParser)
@@ -77,8 +79,7 @@ data Service = Service
   }
   deriving (Show, Generic, ToJSON, FromJSON)
 
-newtype Services = Services [(String, Service)]
-  deriving (Show, Generic, ToJSON, FromJSON)
+type Services = Map String Service
 
 data Environment = Environment
   { config       :: Configuration
@@ -89,16 +90,16 @@ data Environment = Environment
   deriving Show
 
 serviceLookup :: Services -> String -> (Service -> String) -> Maybe String
-serviceLookup (Services services_) servName field =
-  case lookup servName services_ of
+serviceLookup services_ servName field =
+  case M.lookup servName services_ of
     Nothing -> Nothing
     Just s' -> Just $ field s'
 
 readServices :: FilePath -> IO Services
 readServices pfile = do
-  ps <- eitherDecodeFileStrict' pfile :: IO (Either String Services)
+  ps <- decodeFileEither pfile :: IO (Either ParseException Services)
   case ps of
-    Left  err -> error err
+    Left  err -> error $ prettyPrintParseException err
     Right ps' -> return ps'
 
 loadEnvironment :: IO Environment
@@ -115,9 +116,9 @@ mkEnvironment = do
   configExists <- D.doesFileExist $ optConfig opts
   if configExists
     then do
-      cfg  <- eitherDecodeFileStrict' $ optConfig opts :: IO (Either String Configuration)
+      cfg  <- decodeFileEither $ optConfig opts :: IO (Either ParseException Configuration)
       case cfg of
-        Left err -> error err
+        Left err -> error $ prettyPrintParseException err
         Right cfg' -> do
           (Environment cfg' <$> (SystemState <$> getCrontab <*> return False)
             <*> readServices (services_file cfg'))

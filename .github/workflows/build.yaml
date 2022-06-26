@@ -58,7 +58,6 @@ jobs:
           ls -l
 
       - name: Release
-        id: release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
@@ -74,5 +73,5 @@ jobs:
           commit_username: ${{ secrets.AUR_USERNAME }}
           commit_email: ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: ${{ steps.release.outputs.id }}
+          commit_message: ${{ github.ref }}
 

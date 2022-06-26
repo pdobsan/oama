@@ -1,3 +1,4 @@
-- More detailed instructions about the initial authorization step.
+## Config files format changed to YAML.
 
-- Give better error message if there are no authorization records found.
+  - Edit your config files and adjust their file extensions. See the supplied
+    config templates for details.

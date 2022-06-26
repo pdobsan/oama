@@ -34,4 +34,10 @@ package() {
   install -Dm644 LICENSE ${pkgdir}/usr/share/${_pkgname}/LICENSE
   install -Dm644 README.md ${pkgdir}/usr/share/${_pkgname}
   cp -r configs ${pkgdir}/usr/share/${_pkgname}
+  echo
+  echo "*** Breaking changes! ***"
+  echo "Config files format changed to YAML."
+  echo "Edit your config files and adjust their file extensions."
+  echo "See the supplied config templates for details."
+  echo
 }

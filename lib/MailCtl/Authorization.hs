@@ -18,6 +18,7 @@ import Data.Bifunctor (bimap)
 import Data.ByteString.Lazy (fromStrict)
 import Data.ByteString.Lazy.UTF8 qualified as BLU
 import Data.ByteString.UTF8 qualified as BSU
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Time.Clock
 import Data.Time.Format
@@ -241,8 +242,8 @@ localWebServer env serv email_ = do
 
 makeAuthRecord :: Environment -> String -> EmailAddress -> AuthRecord
 makeAuthRecord env servName email_ =
-  let Services services_ = services env
-    in case lookup servName services_ of
+  let services_ = services env
+    in case M.lookup servName services_ of
         Nothing -> error $ "Can't find such service: " ++ servName
         Just serv ->
           AuthRecord "access_token_palce_holder"

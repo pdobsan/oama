@@ -1,0 +1,22 @@
+fdm_config: /YOUR-HOME-DIRECTORY/.config/fdm/fdm.conf
+fdm_accounts: /YOUR-HOME-DIRECTORY/.config/fdm/accounts.conf
+cron_indicator: /YOUR-HOME-DIRECTORY/.local/var/mailctl/fdm-cron-enabled
+oauth2_dir: /YOUR-HOME-DIRECTORY/.local/var/mailctl
+services_file: /YOUR-HOME-DIRECTORY/.config/mailctl/services.yaml
+encrypt_cmd:
+  exec: gpg
+  args:
+    - --encrypt
+    - --recipient
+    - pdobsan@gmail.com
+    - -o
+decrypt_cmd:
+  exec: gpg
+  args:
+    - --decrypt
+# use of `pass` is optional
+password_store: /YOUR-HOME-DIRECTORY/.local/var/password-store
+pass_cmd:
+  exec: pass
+  args:
+    - email/
