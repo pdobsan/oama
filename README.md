@@ -152,6 +152,13 @@ All transactions and exceptions are logged to `syslog`. If your OS using
     journalctl --identifier fdm --identifier mailctl --identifier msmtp -e
 
 
+## Acknowledgment 
+
+The method of dealing with OAuth2 services was inspired by
+[mutt_oauth2.py](https://gitlab.com/muttmua/mutt/-/blob/master/contrib/mutt_oauth2.py)
+Python script written by Alexander Perlis.
+
+
 ## License
 
 `mailctl` is released under the 3-Clause BSD License, see the file
