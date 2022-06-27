@@ -8,7 +8,7 @@ encrypt_cmd:
   args:
     - --encrypt
     - --recipient
-    - pdobsan@gmail.com
+    - YOUR-KEY-ID
     - -o
 decrypt_cmd:
   exec: gpg

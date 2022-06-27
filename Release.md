@@ -1,4 +1,4 @@
-## Config files format changed to YAML.
 
-  - Edit your config files and adjust their file extensions. See the supplied
-    config templates for details.
+- Config files' format is YAML from version 0.4.0 or newer
+
+- Automated AUR post_update
