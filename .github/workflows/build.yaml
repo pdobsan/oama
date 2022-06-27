@@ -69,9 +69,9 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           pkgname: mailctl-bin
-          pkgbuild: ./PKGBUILD
+          pkgbuild: ./aur/PKGBUILD
           assets: |
-            .INSTALL
+            ./aur/.INSTALL
           commit_username: ${{ secrets.AUR_USERNAME }}
           commit_email: ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
