@@ -55,6 +55,7 @@ jobs:
           cp ~/.cabal/bin/mailctl $EXE_NAME
           sha256sum $EXE_NAME > $EXE_NAME.sha256
           sed -e "s/^pkgver=.*$/pkgver=$VERSION/" aur/PKGBUILD >PKGBUILD
+          echo "package_version=$VERSION" >> $GITHUB_ENV
           ls -l
 
       - name: Release
@@ -65,15 +66,15 @@ jobs:
           files: mailctl-*
 
       - name: Release AUR package
-        uses: KSXGitHub/github-actions-deploy-aur@v2.2.5
+        uses: KSXGitHub/github-actions-deploy-aur@v2.3.0
         if: startsWith(github.ref, 'refs/tags/')
         with:
           pkgname: mailctl-bin
-          pkgbuild: ./aur/PKGBUILD
+          pkgbuild: PKGBUILD
           assets: |
-            ./aur/.INSTALL
+            aur/.INSTALL
           commit_username: ${{ secrets.AUR_USERNAME }}
           commit_email: ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: ${{ github.ref }}
+          commit_message: release mailctl-bin ${{ env.package_version }}
 

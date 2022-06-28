@@ -154,7 +154,7 @@ All transactions and exceptions are logged to `syslog`. If your OS using
 
 ## Acknowledgment 
 
-The method of dealing with OAuth2 services was inspired by
+The method of dealing with OAuth2 services was inspired by the
 [mutt_oauth2.py](https://gitlab.com/muttmua/mutt/-/blob/master/contrib/mutt_oauth2.py)
 Python script written by Alexander Perlis.
 
