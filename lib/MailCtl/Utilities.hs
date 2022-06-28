@@ -11,7 +11,7 @@ import Foreign.C.String
 import MailCtl.CommandLine
 import MailCtl.Environment
 import System.Directory qualified as D
-import System.Exit (ExitCode (ExitSuccess), exitWith, exitSuccess)    
+import System.Exit (ExitCode (ExitSuccess), exitWith, exitSuccess, exitFailure)    
 import System.Posix.Syslog (syslog, Priority(..))
 import System.Process qualified as P    
 import Text.Pretty.Simple
@@ -24,18 +24,28 @@ pprintEnv env = do
   pPrint env
 
 enableCron :: Environment -> IO ()
-enableCron env = do
-  TIO.writeFile (cron_indicator $ config env) ""
-  logger Warning "Enabled running fdm by cron."
-  env' <- loadEnvironment
-  statusCron env'
+enableCron env =
+  case cron_indicator $ config env of
+    Just cron_indicator' -> do
+      TIO.writeFile cron_indicator' ""
+      logger Warning "Enabled running fdm by cron."
+      env' <- loadEnvironment
+      statusCron env'
+    Nothing -> do
+      putStrLn "enableCron: there is no 'cron_indicator' configured."
+      exitFailure
 
 disableCron :: Environment -> IO ()
-disableCron env = do
-  D.removePathForcibly $ cron_indicator $ config env
-  logger Warning "Disabled running fdm by cron."
-  env' <- loadEnvironment
-  statusCron env'
+disableCron env =
+  case cron_indicator $ config env of
+    Just cron_indicator' -> do
+      D.removePathForcibly cron_indicator'
+      logger Warning "Disabled running fdm by cron."
+      env' <- loadEnvironment
+      statusCron env'
+    Nothing -> do
+      putStrLn "disableCron: there is no 'cron_indicator' configured."
+      exitFailure
 
 statusCron :: Environment -> IO ()
 statusCron env = do

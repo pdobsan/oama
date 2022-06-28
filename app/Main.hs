@@ -19,8 +19,17 @@ main = do
       Authorize servName emailAddress -> authorizeEmail env servName (EmailAddress emailAddress)
       Fetch emailAddresses            -> fetch env (EmailAddress <$> emailAddresses)
       ListEmails                      -> listAccounts env
-      Cron StatusCron                 -> statusCron env
-      Cron EnableCron                 -> enableCron env
-      Cron DisableCron                -> disableCron env
+      Cron StatusCron ->
+        case cron_indicator $ config env of
+          Just _ -> statusCron env
+          Nothing -> putStrLn "main: there is no 'cron_indicator' configured."
+      Cron EnableCron ->
+        case cron_indicator $ config env of
+          Just _ -> enableCron env
+          Nothing -> putStrLn "main: there is no 'cron_indicator' configured."
+      Cron DisableCron ->
+        case cron_indicator $ config env of
+          Just _ -> disableCron env
+          Nothing -> putStrLn "main: there is no 'cron_indicator' configured."
       PrintEnv                        -> pprintEnv env
 

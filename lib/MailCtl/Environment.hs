@@ -53,7 +53,7 @@ data Program = Program
 data Configuration = Configuration
   { fdm_config     :: FilePath
   , fdm_accounts   :: FilePath
-  , cron_indicator :: FilePath
+  , cron_indicator :: Maybe FilePath
   , password_store :: Maybe FilePath
   , oauth2_dir     :: FilePath
   , services_file  :: FilePath
@@ -119,7 +119,7 @@ mkEnvironment = do
       cfg  <- decodeFileEither $ optConfig opts :: IO (Either ParseException Configuration)
       case cfg of
         Left err -> error $ prettyPrintParseException err
-        Right cfg' -> do
+        Right cfg' ->
           (Environment cfg' <$> (SystemState <$> getCrontab <*> return False)
             <*> readServices (services_file cfg'))
             <*> execParser optsParser
@@ -142,5 +142,8 @@ getCrontab = do
       exitWith x
 
 isCronEnabled :: Environment -> IO Bool
-isCronEnabled env = D.doesFileExist $ cron_indicator $ config env
+isCronEnabled env = do
+  case cron_indicator $ config env of
+    Just cron_indicator' -> D.doesFileExist cron_indicator'
+    Nothing -> return False
 
