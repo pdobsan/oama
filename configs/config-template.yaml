@@ -1,8 +1,12 @@
-fdm_config: /YOUR-HOME-DIRECTORY/.config/fdm/fdm.conf
-fdm_accounts: /YOUR-HOME-DIRECTORY/.config/fdm/accounts.conf
-cron_indicator: /YOUR-HOME-DIRECTORY/.local/var/mailctl/fdm-cron-enabled
-oauth2_dir: /YOUR-HOME-DIRECTORY/.local/var/mailctl
+# The primary purpose of mailctl is providing IMAP/SMTP clients with the
+# capabilities of renewal and authorization of OAuth2 credentials. 
+# Accordingly only the OAuth2 related config entries are mandatory.
+
+# These four entries should be use for OAuth2 access method
 services_file: /YOUR-HOME-DIRECTORY/.config/mailctl/services.yaml
+oauth2_dir: /YOUR-HOME-DIRECTORY/.local/var/mailctl
+# This encryption method using gnupg.
+# Alternatives like gnome-keyring can also be configured here.
 encrypt_cmd:
   exec: gpg
   args:
@@ -14,9 +18,19 @@ decrypt_cmd:
   exec: gpg
   args:
     - --decrypt
-# use of `pass` is optional
+
+# Only if you are using fdm
+fdm_config: /YOUR-HOME-DIRECTORY/.config/fdm/fdm.conf
+fdm_accounts: /YOUR-HOME-DIRECTORY/.config/fdm/accounts.conf
+
+# Only if you are running mailctl directly by cron
+cron_indicator: /YOUR-HOME-DIRECTORY/.local/var/mailctl/fdm-cron-enabled
+
+# Only if you are using a password manager for traditional access methods
+# This is an example of using `pass`
 password_store: /YOUR-HOME-DIRECTORY/.local/var/password-store
 pass_cmd:
   exec: pass
   args:
     - email/
+

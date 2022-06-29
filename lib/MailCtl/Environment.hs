@@ -10,7 +10,7 @@ module MailCtl.Environment
   , Program(..)
   , Service(..)
   , Services
-  , serviceLookup 
+  , serviceFieldLookup 
   , Configuration(..)
   , SystemState(..)
   , Environment(..)
@@ -51,15 +51,15 @@ data Program = Program
   deriving (Show, Generic, ToJSON, FromJSON)
 
 data Configuration = Configuration
-  { fdm_config     :: FilePath
-  , fdm_accounts   :: FilePath
-  , cron_indicator :: Maybe FilePath
-  , password_store :: Maybe FilePath
-  , oauth2_dir     :: FilePath
-  , services_file  :: FilePath
-  , pass_cmd       :: Maybe Program
+  { services_file  :: FilePath
   , decrypt_cmd    :: Program
   , encrypt_cmd    :: Program
+  , oauth2_dir     :: FilePath
+  , fdm_config     :: Maybe FilePath
+  , fdm_accounts   :: Maybe FilePath
+  , cron_indicator :: Maybe FilePath
+  , password_store :: Maybe FilePath
+  , pass_cmd       :: Maybe Program
   }
   deriving (Show, Generic, ToJSON, FromJSON)
 
@@ -76,6 +76,7 @@ data Service = Service
   , auth_scope     :: String
   , client_id      :: String
   , client_secret  :: String
+  , tenant         :: Maybe String
   }
   deriving (Show, Generic, ToJSON, FromJSON)
 
@@ -89,8 +90,8 @@ data Environment = Environment
   }
   deriving Show
 
-serviceLookup :: Services -> String -> (Service -> String) -> Maybe String
-serviceLookup services_ servName field =
+serviceFieldLookup :: Services -> String -> (Service -> String) -> Maybe String
+serviceFieldLookup services_ servName field =
   case M.lookup servName services_ of
     Nothing -> Nothing
     Just s' -> Just $ field s'

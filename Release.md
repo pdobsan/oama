@@ -1,4 +1,4 @@
+Made all not OAuth2 related functionalities optional.
 
-- Config files' format is YAML from version 0.4.0 or newer
+  - More detailed instructions in `configs/config-template.yaml`
 
-- Automated AUR post_update

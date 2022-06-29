@@ -145,12 +145,12 @@ renewAccessToken _ Nothing _ = return $ Left "renewAccessToken: Nothing as servi
 renewAccessToken _ _ Nothing = return $ Left "renewAccessToken: Nothing as refresh token argument"
 renewAccessToken env (Just serv) (Just rft) = do
   let ss = services env
-      qs = [ ("client_id", serviceLookup ss serv client_id)
-           , ("client_secret", serviceLookup ss serv client_secret) 
+      qs = [ ("client_id", serviceFieldLookup ss serv client_id)
+           , ("client_secret", serviceFieldLookup ss serv client_secret) 
            , ("grant_type", Just "refresh_token")
            , ("refresh_token", Just rft)
            ]
-  case serviceLookup ss serv token_endpoint of
+  case serviceFieldLookup ss serv token_endpoint of
     Nothing -> error "renewAccessToken: missing token_endpoint field in Services."
     Just tokenEndpoint -> fetchAuthRecord tokenEndpoint qs
 
@@ -182,13 +182,13 @@ getAccessToken :: Environment -> Maybe String -> String -> IO (Either String Aut
 getAccessToken _ Nothing _ = return $ Left "getAccessToken: missing service string"
 getAccessToken env (Just serv) authcode = do
   let ss = services env
-      qs = [ ("client_id", serviceLookup ss serv client_id)
-           , ("client_secret", serviceLookup ss serv client_secret)
+      qs = [ ("client_id", serviceFieldLookup ss serv client_id)
+           , ("client_secret", serviceFieldLookup ss serv client_secret)
            , ("code", Just authcode)
            , ("grant_type", Just "authorization_code")
-           , ("redirect_uri", serviceLookup ss serv redirect_uri)
+           , ("redirect_uri", serviceFieldLookup ss serv redirect_uri)
            ]
-  case serviceLookup ss serv token_endpoint of
+  case serviceFieldLookup ss serv token_endpoint of
     Nothing -> error "getAccessToken: missing token_endpoint field in Services."
     Just tokenEndpoint -> fetchAuthRecord tokenEndpoint qs
 
@@ -196,13 +196,13 @@ generateAuthPage :: Environment -> Maybe String -> EmailAddress -> IO (Either St
 generateAuthPage _ Nothing _ = return $ Left "generateAuthPage: missing service string"
 generateAuthPage env (Just serv) email_ = do
   let ss = services env
-      qs = [ ("client_id", serviceLookup ss serv client_id)
-           , ("redirect_uri", serviceLookup ss serv redirect_uri)
+      qs = [ ("client_id", serviceFieldLookup ss serv client_id)
+           , ("redirect_uri", serviceFieldLookup ss serv redirect_uri)
            , ("response_type", Just "code")
-           , ("scope", serviceLookup ss serv auth_scope)
+           , ("scope", serviceFieldLookup ss serv auth_scope)
            , ("login_hint", Just $ unEmailAddress email_)
            ]
-  case serviceLookup ss serv auth_endpoint of
+  case serviceFieldLookup ss serv auth_endpoint of
     Nothing -> error "generateAuthPage: missing auth_endpoint field in Services."
     Just tokenEndpoint -> runPOSTRequest tokenEndpoint qs
 
@@ -264,7 +264,7 @@ authorizeEmail env servName email_ = do
   case service authrec of
     Nothing -> error "authorizeEmail: missing service field in AuthRecord."
     Just serv -> do
-      case serviceLookup (services env) serv redirect_uri of
+      case serviceFieldLookup (services env) serv redirect_uri of
         Nothing -> error "authorizeEmail: missing redirect_uri field in AuthRecord."
         Just redirect -> do
           putStrLn $ "To grant OAuth2 access to " ++ unEmailAddress email_ ++ " visit the local URL below with your browser."

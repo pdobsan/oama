@@ -55,9 +55,9 @@ statusCron env = do
       putStrLn $ crontab $ system_state env
     else putStrLn "Running from cron is disabled."
 
-listAccounts :: Environment -> IO ()
-listAccounts env = do
-  xs <- TIO.readFile (fdm_accounts $ config env)
+listAccounts :: String -> IO ()
+listAccounts fdm_accounts_path = do
+  xs <- TIO.readFile fdm_accounts_path
   let ys = T.lines xs
       zs = [ extract y | y <- ys, T.isPrefixOf "account" y ]
       z  = T.intercalate "\n" zs
@@ -74,12 +74,12 @@ fetchAccounts fdmConfig as = do
   (x, _, _) <- P.readProcessWithExitCode "fdm" (["-f", fdmConfig, "-l"] ++ bs ++ ["fetch"]) ""
   if x == ExitSuccess then return () else exitWith x
 
-fetch :: Environment -> [EmailAddress] -> IO ()
-fetch env accounts = do
+fetch :: Environment -> String -> [EmailAddress] -> IO ()
+fetch env fdm_config_ accounts = do
   let cronEnabled = cron_enabled $ system_state env
       runByCron   = optCron $ options env
   run cronEnabled runByCron
  where
-  run _  False = fetchAccounts (fdm_config $ config env) accounts
-  run ce True  = if ce then fetchAccounts (fdm_config $ config env) accounts else exitSuccess
+  run _  False = fetchAccounts fdm_config_ accounts
+  run ce True  = if ce then fetchAccounts fdm_config_ accounts else exitSuccess
 

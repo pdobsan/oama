@@ -7,6 +7,7 @@ authorization of OAuth2 credentials.
 
 Many IMAP/SMTP clients, like [msmpt](https://marlam.de/msmtp/),
 [fdm](https://github.com/nicm/fdm),
+[isync](http://isync.sourceforge.net/),
 [neomutt](https://github.com/neomutt/neomutt) or
 [mutt](http://www.mutt.org/) can use OAuth2 access tokens but lack the
 ability to renew and/or authorize OAuth2 credentials. The purpose of
@@ -61,11 +62,8 @@ through this process.
       list                     List all accounts in fdm's config
       printenv                 Print the current Environment
 
-The various functionalities of `mailctl` are quite loosely coupled. In
-particular, using a password manager (like `pass`) and the related
-configuration details are optional.
-
-More detailed help for individual commands can also be generated:
+More detailed help for individual commands can also be generated, for
+example:
 
     % mailctl authorize -h
 
@@ -79,6 +77,7 @@ More detailed help for individual commands can also be generated:
       -h,--help                Show this help text
 
 
+
 ### Shell completion
  
 Shell completion for `bash`, `zsh` and `fish` shells can be automatically
@@ -89,24 +88,21 @@ generated. Here is how to do it for `zsh`:
 
 ## Configuration
 
+The various functionalities of `mailctl` are quite loosely coupled. Choose,
+that is configure, only the ones you need. For details on your options, see
+`configs/config-template.yaml`.
+
 The configuration files for `mailctl` are in YAML. The files in the
 `configs/` directory are templates for `mailctl`, `msmtp` and `fdm`. The
-`configs/services-template.yaml` file contains details for `google`,
+`configs/services-template.yaml` file contains details for `google` and
 `microsoft`. You need to provide your own `client_id` and `client_secret` of
 your application or of a suitable FOSS registered application.
 
-Edit them to adjust to your environment. When you are done run
-`mailctl authorize <service> <email>`.
+The Oauth2 credentials are kept encrypted using [GNU PG](https://www.gnupg.org/).
+so it is assumed that an authorized `gpg-agent` is running. Alternatives
+like `gnome-keyring` might be used.
 
-The base password manager used here is
-[pass](https://www.passwordstore.org/)
-The Oauth2 credentials are kept encrypted using
-[GNU PG](https://www.gnupg.org/).
-
-Since both `pass` and `mailctl` are using `gpg` it is assumed that an
-authorized `gpg-agent` is running.
-
-`fdm` is run by `cron` with a `crontab` like this:
+`fdm`, if used, can be run by `cron` with a `crontab` like this:
 
     PATH  = /YOUR_HOME_DIRECTORY/.cabal/bin:/usr/bin:/bin
     # fetch mail in every 10 minutes
@@ -140,14 +136,16 @@ Clone this repository and invoke `cabal`:
 
     git clone https://github.com/pdobsan/mailctl.git
     cd mailctl
+    cabal update
     cabal install
 
 `mailctl` is known to build with `ghc 8.10.7` and `ghc 9.2.3`
 
-### Logging
+
+## Logging
 
 All transactions and exceptions are logged to `syslog`. If your OS using
-`systemd` you can inspect the log with the command below:
+`systemd` you can inspect the log with a command like below:
 
     journalctl --identifier fdm --identifier mailctl --identifier msmtp -e
 

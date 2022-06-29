@@ -17,8 +17,14 @@ main = do
       Oauth2 emailAddress             -> getEmailAuth env (EmailAddress emailAddress)
       Renew emailAddress              -> forceRenew env (EmailAddress emailAddress)
       Authorize servName emailAddress -> authorizeEmail env servName (EmailAddress emailAddress)
-      Fetch emailAddresses            -> fetch env (EmailAddress <$> emailAddresses)
-      ListEmails                      -> listAccounts env
+      Fetch emailAddresses ->
+        case fdm_config $ config env of
+          Just fdm_config_ -> fetch env fdm_config_ (EmailAddress <$> emailAddresses)
+          Nothing -> putStrLn "main: there is no 'fdm_config' configured."
+      ListEmails ->
+        case fdm_accounts $ config env of
+          Just fdm_accounts_ -> listAccounts fdm_accounts_
+          Nothing -> putStrLn "main: there is no 'fdm_accounts' configured."
       Cron StatusCron ->
         case cron_indicator $ config env of
           Just _ -> statusCron env
