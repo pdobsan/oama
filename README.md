@@ -76,14 +76,7 @@ example:
       <email>                  Email address
       -h,--help                Show this help text
 
-
-
-### Shell completion
- 
-Shell completion for `bash`, `zsh` and `fish` shells can be automatically
-generated. Here is how to do it for `zsh`:
-
-      mailctl --zsh-completion-script $(which mailctl) > ~/.local/share/zsh/site-functions/_mailctl
+Shell completion for `bash`, `zsh` and `fish` shells are provided.
 
 
 ## Configuration
