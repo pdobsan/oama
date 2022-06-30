@@ -113,11 +113,14 @@ loadEnvironment = do
 
 mkEnvironment :: IO Environment
 mkEnvironment = do
+  configDir <- D.getXdgDirectory D.XdgConfig "mailctl"
   opts <- execParser optsParser
-  configExists <- D.doesFileExist $ optConfig opts
+  let cfgOption = optConfig opts
+      configFile = if cfgOption == "" then configDir <> "/config.yaml" else cfgOption
+  configExists <- D.doesFileExist configFile
   if configExists
     then do
-      cfg  <- decodeFileEither $ optConfig opts :: IO (Either ParseException Configuration)
+      cfg  <- decodeFileEither configFile :: IO (Either ParseException Configuration)
       case cfg of
         Left err -> error $ prettyPrintParseException err
         Right cfg' ->
@@ -125,8 +128,7 @@ mkEnvironment = do
             <*> readServices (services_file cfg'))
             <*> execParser optsParser
     else do
-      putStrLn "Can't find a configuration file."
-      putStrLn "This program needs one to work."
+      putStrLn $ "Can't find configuration file: " <> configFile
       exitFailure
 
 getCrontab :: IO String

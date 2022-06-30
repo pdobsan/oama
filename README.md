@@ -62,6 +62,9 @@ through this process.
       list                     List all accounts in fdm's config
       printenv                 Print the current Environment
 
+If no configuration file is specified the default is
+`$XDG_CONFIG_HOME/mailctl/config.yaml`.
+
 More detailed help for individual commands can also be generated, for
 example:
 

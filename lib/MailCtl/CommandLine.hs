@@ -37,7 +37,7 @@ versionOption = do
 programOptions :: Parser Opts
 programOptions =
   Opts <$> strOption (long "config-file" <> short 'c' <> metavar "<config>"
-           <> value "/home/peter/.config/mailctl/config.yaml" <> help "Configuration file")
+           <> value "" <> help "Configuration file")
     <*> switch ( long "run-by-cron" <> help "mailctl invoked by cron" )
     <*> hsubparser (getpwd <> oauth2 <> renew <> authorize <> fetch <> cron <> listEmails <> printEnv)
 

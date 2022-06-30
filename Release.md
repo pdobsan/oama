@@ -1,7 +1,4 @@
-Made all not OAuth2 related functionalities optional.
+## The default configuration file is `$XDG_CONFIG_HOME/mailctl/config.yaml`
 
-  - More detailed instructions in `configs/config-template.yaml`
-
-  - bash, fish, zsh completions
-
+  - also completions are provided in yet another way.
 
