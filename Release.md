@@ -2,3 +2,4 @@
 
   - also completions are provided in yet another way.
 
+  - fixed aur/PKGBUILD
