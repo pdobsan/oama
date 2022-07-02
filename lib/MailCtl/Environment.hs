@@ -11,6 +11,7 @@ module MailCtl.Environment
   , Service(..)
   , Services
   , serviceFieldLookup 
+  , PostMode(..)
   , Configuration(..)
   , SystemState(..)
   , Environment(..)
@@ -69,13 +70,17 @@ data SystemState = SystemState
   }
   deriving (Show, Generic, ToJSON)
 
+data PostMode = RequestBody | QueryString
+
 data Service = Service
-  { auth_endpoint  :: String
-  , token_endpoint :: String
-  , redirect_uri   :: String
-  , auth_scope     :: String
-  , client_id      :: String
-  , client_secret  :: String
+  { auth_endpoint  :: Maybe String
+  , auth_postmode  :: Maybe String
+  , token_endpoint :: Maybe String
+  , token_postmode :: Maybe String
+  , redirect_uri   :: Maybe String
+  , auth_scope     :: Maybe String
+  , client_id      :: Maybe String
+  , client_secret  :: Maybe String
   , tenant         :: Maybe String
   }
   deriving (Show, Generic, ToJSON, FromJSON)
@@ -90,11 +95,9 @@ data Environment = Environment
   }
   deriving Show
 
-serviceFieldLookup :: Services -> String -> (Service -> String) -> Maybe String
-serviceFieldLookup services_ servName field =
-  case M.lookup servName services_ of
-    Nothing -> Nothing
-    Just s' -> Just $ field s'
+serviceFieldLookup :: Services -> String -> (Service -> Maybe String) -> Maybe String
+serviceFieldLookup services_ servName field = field =<< M.lookup servName services_
+--serviceFieldLookup' services_ servName field = M.lookup servName services_ >>= field
 
 readServices :: FilePath -> IO Services
 readServices pfile = do

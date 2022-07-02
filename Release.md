@@ -1,5 +1,5 @@
-## The default configuration file is `$XDG_CONFIG_HOME/mailctl/config.yaml`
+### Specify how to POST request parameters
 
-  - also completions are provided in yet another way.
-
-  - fixed aur/PKGBUILD
+The options are `query-string`, `request-body` or `both`. These should be
+set in the `services.yaml` config file both for the `auth_postmode` and
+for the `token_postmode` fields.

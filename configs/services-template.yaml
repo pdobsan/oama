@@ -1,20 +1,21 @@
 google:
   auth_endpoint: https://accounts.google.com/o/oauth2/auth
+  auth_postmode: query-string
   token_endpoint: https://accounts.google.com/o/oauth2/token
+  token_postmode: both
   redirect_uri: http://localhost:8080
   auth_scope: https://mail.google.com/
   client_id: YOUR-APP-CLIENT-ID
   client_secret: YOUR-APP-CLIENT-SECRET
 
 microsoft:
-  auth_endpoint: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
-  token_endpoint: https://login.microsoftonline.com/common/oauth2/v2.0/token
-  redirect_uri: https://login.microsoftonline.com/common/oauth2/nativeclient
-  auth_scope: |
-    https://outlook.office365.com/IMAP.AccessAsUser.All
-    https://outlook.office365.com/SMTP.Send
-    offline_access
-  tenant: common
+  auth_endpoint: https://login.microsoftonline.com/YOUR-TENANT-ID/oauth2/v2.0/authorize
+  auth_postmode: query-string
+  token_endpoint: https://login.microsoftonline.com/YOUR-TENANT-ID/oauth2/v2.0/token
+  token_postmode: UNKNOWN, consult the API docs
+  redirect_uri: https://login.microsoftonline.com/YOUR-TENANT-ID/oauth2/nativeclient
+  auth_scope: https://outlook.office365.com/IMAP.AccessAsUser.All https://outlook.office365.com/SMTP.Send offline_access
+  tenant: YOUR-TENANT-ID
   client_id: YOUR-APP-CLIENT-ID
   client_secret: YOUR-APP-CLIENT-SECRET
 

@@ -91,8 +91,17 @@ that is configure, only the ones you need. For details on your options, see
 The configuration files for `mailctl` are in YAML. The files in the
 `configs/` directory are templates for `mailctl`, `msmtp` and `fdm`. The
 `configs/services-template.yaml` file contains details for `google` and
-`microsoft`. You need to provide your own `client_id` and `client_secret` of
-your application or of a suitable FOSS registered application.
+`microsoft`.
+
+You need to provide your own `client_id` and `client_secret` of your
+application or of a suitable FOSS registered application.
+
+Service providers varying how they communicate at their authorization and
+token endpoint. The accepted POST methods should be set in the
+`services.yaml` config file both for the `auth_postmode` and for the
+`token_postmode` fields. The options are `query-string`, `request-body` or
+`both`. When `both` is configured `mailctl` uses the `request-body` method
+since it is considered safer.
 
 The Oauth2 credentials are kept encrypted using [GNU PG](https://www.gnupg.org/).
 so it is assumed that an authorized `gpg-agent` is running. Alternatives

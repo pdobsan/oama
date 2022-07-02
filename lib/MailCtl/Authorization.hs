@@ -113,24 +113,37 @@ getEmailAuth' env email_ = do
           return $ Right authrec'
         else return $ Right authrec
 
-updateRequest :: Request -> [(String, Maybe String)] -> Request
-updateRequest req xs =
-  let ys = [ bimap BSU.fromString (BSU.fromString <$>) x | x <- xs ]
-  in  setRequestQueryString ys req
+decodePostMode :: String -> PostMode
+decodePostMode "request-body" = RequestBody
+decodePostMode "query-string" = QueryString
+decodePostMode "both"         = RequestBody
+decodePostMode postmode       = error $ "Invalid PostMode: " <> postmode
 
-runPOSTRequest :: String -> [(String, Maybe String)] -> IO (Either String BSU.ByteString)
-runPOSTRequest url queries = do
-  req <- parseRequest $ "POST " ++ url
-  eresp <- try $ httpBS (updateRequest req queries) :: IO (Either HttpException (Response BSU.ByteString))
-  case eresp of
-    -- hide request containing sensitive information
-    Left (HttpExceptionRequest _ x) -> return $ Left $ show x
-    Left (InvalidUrlException u _) -> return $ Left u
-    Right resp -> return $ Right $ getResponseBody resp
+postRequest :: PostMode -> String -> [(String, Maybe String)] -> IO (Either String BSU.ByteString)
+postRequest postmode url params = do
+  case postmode of
+    RequestBody -> do
+      -- send all parameters in request body
+      req <- parseRequest $ "POST " ++ url
+      let ps = [(x, y) | (x, Just y) <- params]
+          mps = M.fromList ps
+      runPost (setRequestBodyJSON mps req)
+    QueryString -> do
+      -- send all parameters as query strings
+      let ps = [ bimap BSU.fromString (BSU.fromString <$>) x | x <- params ]
+      req <- parseRequest $ "POST " ++ url
+      runPost (setRequestQueryString ps req)
+  where
+    runPost query = do
+      eresp <- try $ httpBS query :: IO (Either HttpException (Response BSU.ByteString))
+      case eresp of
+        Left (HttpExceptionRequest _ x) -> return $ Left $ show x
+        Left (InvalidUrlException u _) -> return $ Left u
+        Right resp -> return $ Right $ getResponseBody resp
 
-fetchAuthRecord :: String -> [(String, Maybe String)] -> IO (Either String AuthRecord)
-fetchAuthRecord url queries = do
-  eresp <- runPOSTRequest url queries
+fetchAuthRecord :: PostMode -> String -> [(String, Maybe String)] -> IO (Either String AuthRecord)
+fetchAuthRecord postmode url queries = do
+  eresp <- postRequest postmode url queries
   case eresp of
     Left err -> return $ Left err
     Right resp ->
@@ -152,7 +165,10 @@ renewAccessToken env (Just serv) (Just rft) = do
            ]
   case serviceFieldLookup ss serv token_endpoint of
     Nothing -> error "renewAccessToken: missing token_endpoint field in Services."
-    Just tokenEndpoint -> fetchAuthRecord tokenEndpoint qs
+    Just tokenEndpoint ->
+      case serviceFieldLookup ss serv token_postmode of
+        Nothing -> error "renewAccessToken: missing token_postmode field in Services."
+        Just postmode -> fetchAuthRecord (decodePostMode postmode) tokenEndpoint qs
 
 forceRenew :: Environment -> EmailAddress -> IO ()
 forceRenew env email_ = do
@@ -190,7 +206,10 @@ getAccessToken env (Just serv) authcode = do
            ]
   case serviceFieldLookup ss serv token_endpoint of
     Nothing -> error "getAccessToken: missing token_endpoint field in Services."
-    Just tokenEndpoint -> fetchAuthRecord tokenEndpoint qs
+    Just tokenEndpoint ->
+      case serviceFieldLookup ss serv token_postmode of
+        Nothing -> error "getAccessToken: missing token_postmode field in Services."
+        Just postmode -> fetchAuthRecord (decodePostMode postmode) tokenEndpoint qs
 
 generateAuthPage :: Environment -> Maybe String -> EmailAddress -> IO (Either String BSU.ByteString)
 generateAuthPage _ Nothing _ = return $ Left "generateAuthPage: missing service string"
@@ -201,10 +220,14 @@ generateAuthPage env (Just serv) email_ = do
            , ("response_type", Just "code")
            , ("scope", serviceFieldLookup ss serv auth_scope)
            , ("login_hint", Just $ unEmailAddress email_)
+           , ("tenant", serviceFieldLookup ss serv tenant)
            ]
   case serviceFieldLookup ss serv auth_endpoint of
     Nothing -> error "generateAuthPage: missing auth_endpoint field in Services."
-    Just tokenEndpoint -> runPOSTRequest tokenEndpoint qs
+    Just authEndpoint ->
+      case serviceFieldLookup ss serv auth_postmode of
+        Nothing -> error "generateAuthPage: missing auth_postmode field in Services."
+        Just postmode -> postRequest (decodePostMode postmode) authEndpoint qs
 
 localWebServer :: Environment -> Maybe String -> EmailAddress -> IO ()
 localWebServer env serv email_ = do
@@ -248,7 +271,7 @@ makeAuthRecord env servName email_ =
         Just serv ->
           AuthRecord "access_token_palce_holder"
                      1
-                     (auth_scope serv)
+                     (fromMaybe "unknown" (auth_scope serv))
                      "Bearer"
                      (Just "2000-01-01 12:00 UTC")
                      (Just "refresh_token_place_holder")
