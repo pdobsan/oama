@@ -20,6 +20,7 @@ import Data.ByteString.Lazy.UTF8 qualified as BLU
 import Data.ByteString.UTF8 qualified as BSU
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
+import Data.Text (Text)
 import Data.Time.Clock
 import Data.Time.Format
 import MailCtl.Environment
@@ -237,6 +238,7 @@ localWebServer env serv email_ = do
     Right authP -> do
       let startAuth :: TW.ResponderM a
           startAuth = TW.send $ TW.html $ fromStrict authP
+
           finishAuth :: TW.ResponderM a
           finishAuth = do
             code :: String <- TW.param "code"
@@ -255,12 +257,24 @@ localWebServer env serv email_ = do
                   <> printf "<p>They have been saved encrypted in <kbd>%s/%s.auth</kbd></p>"
                              (oauth2_dir (config env))  (unEmailAddress email_)
                   <> printf "<p>You may now quit the waiting <kbd>mailctl</kbd> program.</p>"
+
+          casService :: TW.ResponderM a
+          casService = do
+            casURL :: Text <- TW.param "service"
+            TW.send $ TW.redirect302 casURL
+
           routes :: [TW.Middleware]
-          routes = [ TW.get "/start" startAuth
+          routes = [ TW.get "/cas/login" casService
+                   , TW.get "/start" startAuth
                    , TW.get "/" finishAuth
                    ]
+
           missing :: TW.ResponderM a
-          missing = TW.send $ TW.html "Not found..."
+          missing = do
+            req <- TW.request
+            let req' = BLU.fromString $ show req
+            TW.send $ TW.html $ "localWebServer: " <> "request not found ...\n" <> req'
+
       run 8080 $ foldr ($) (TW.notFound missing) routes
 
 makeAuthRecord :: Environment -> String -> EmailAddress -> AuthRecord
