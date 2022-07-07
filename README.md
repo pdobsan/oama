@@ -40,7 +40,8 @@ through this process.
 
     mailctl - Provide OAuth2 renewal and authorization capabilities.
 
-    Usage: mailctl [--version] [-c|--config-file <config>] [--run-by-cron] COMMAND
+    Usage: mailctl [--version] [-c|--config-file <config>] [--run-by-cron] [--debug]
+                   COMMAND
 
       Mailctl provides IMAP/SMTP clients with the capabilities of renewal and
       authorization of OAuth2 credentials.
@@ -51,6 +52,7 @@ through this process.
       -c,--config-file <config>
                                Configuration file
       --run-by-cron            mailctl invoked by cron
+      --debug                  Print HTTP traffic to stdout
 
     Available commands:
       password                 Get the password for email
@@ -90,18 +92,22 @@ that is configure, only the ones you need. For details on your options, see
 
 The configuration files for `mailctl` are in YAML. The files in the
 `configs/` directory are templates for `mailctl`, `msmtp` and `fdm`. The
-`configs/services-template.yaml` file contains details for `google` and
-`microsoft`.
+`configs/services-template.yaml` file contains details for `google`,
+`microsoft` and `yahoo`.
 
 You need to provide your own `client_id` and `client_secret` of your
 application or of a suitable FOSS registered application.
 
-Service providers varying how they communicate at their authorization and
-token endpoint. The accepted POST methods should be set in the
-`services.yaml` config file both for the `auth_postmode` and for the
-`token_postmode` fields. The options are `query-string`, `request-body` or
-`both`. When `both` is configured `mailctl` uses the `request-body` method
-since it is considered safer.
+Service providers varying how they communicate at their authorization and token
+endpoints. The accepted HTTP methods and how the request's parameters delivered
+must be configured in the `services.yaml` file for both endpoints. Options for
+`*_http_method` are `POST` and `GET`. Options for `*_params_mode` are
+`query-string`, `request-body` or `both`. When `both` is configured `mailctl`
+uses the `request-body` method since it is considered safer.
+
+If you encounter difficulties during *authorization* or *renewal* try to use
+the `--debug` switch which causes `mailctl` to mirror print HTTP traffic to
+`stdout`.
 
 The Oauth2 credentials are kept encrypted using [GNU PG](https://www.gnupg.org/).
 so it is assumed that an authorized `gpg-agent` is running. Alternatives

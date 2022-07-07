@@ -3,9 +3,8 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 
 module MailCtl.Authorization
-  ( getEmailPwd
+  ( authorizeEmail
   , getEmailAuth
-  , authorizeEmail
   , forceRenew
   )
 where
@@ -24,22 +23,25 @@ import Data.Text (Text)
 import Data.Time.Clock
 import Data.Time.Format
 import MailCtl.Environment
+import MailCtl.CommandLine
 import MailCtl.Utilities (logger)
 import Network.HTTP.Conduit
 import Network.HTTP.Simple
 import Network.Wai.Handler.Warp (run)
 import System.Directory qualified as D
-import System.Environment qualified as E
 import System.Exit (ExitCode (ExitSuccess), exitWith, exitFailure)
 import System.IO qualified as IO
 import System.Posix.Syslog (Priority(..))
 import System.Process qualified as P
 import Text.Printf
 import Web.Twain qualified as TW
--- import Text.Pretty.Simple
+import Text.Pretty.Simple
 
--- The OAuth2 authorization flow is implemented along the lines of
+-- The OAuth2 authorization flow's implementation is based on these docs:
+--
 -- https://developers.google.com/identity/protocols/oauth2/native-app
+-- https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow
+--
 -- The managed credentials are kept in encrypted files using GNU PG.
 
 readAuthRecord :: Environment -> EmailAddress -> IO AuthRecord
@@ -69,7 +71,7 @@ writeAuthRecord env email_ rec = do
   (Just h, _, _, p) <- P.createProcess (P.proc (exec $ encrypt_cmd $ config env)
                          (args  (encrypt_cmd $ config env) ++ [gpgFile ++ ".new"]))
                          { P.std_in = P.CreatePipe }
-  IO.hPutStr h jsrec 
+  IO.hPutStr h jsrec
   IO.hFlush h
   IO.hClose h
   x <- P.waitForProcess p
@@ -114,37 +116,63 @@ getEmailAuth' env email_ = do
           return $ Right authrec'
         else return $ Right authrec
 
-decodePostMode :: String -> PostMode
-decodePostMode "request-body" = RequestBody
-decodePostMode "query-string" = QueryString
-decodePostMode "both"         = RequestBody
-decodePostMode postmode       = error $ "Invalid PostMode: " <> postmode
+decodeParamsMode :: String -> ParamsMode
+decodeParamsMode "request-body" = RequestBody
+decodeParamsMode "query-string" = QueryString
+decodeParamsMode "both"         = RequestBody
+decodeParamsMode paramsMode       = error $ "Invalid ParamsMode: " <> paramsMode
 
-postRequest :: PostMode -> String -> [(String, Maybe String)] -> IO (Either String BSU.ByteString)
-postRequest postmode url params = do
-  case postmode of
+sendRequest :: Environment -> String -> ParamsMode -> String -> [(String, Maybe String)] -> IO (Either String BSU.ByteString)
+sendRequest env httpMethod paramsMode url params = do
+  case paramsMode of
     RequestBody -> do
-      -- send all parameters in request body
-      req <- parseRequest $ "POST " ++ url
+      req <- parseRequest $ httpMethod ++ " " ++ url
       let ps = [(x, y) | (x, Just y) <- params]
           mps = M.fromList ps
-      runPost (setRequestBodyJSON mps req)
+          req' = setRequestBodyJSON mps req
+      if optDebug $ options env
+        then do
+          putStrLn "sending all parameters in request body as JSON"
+          pPrint req'
+          putStrLn "request body:"
+          pPrint mps
+          runPost req'
+        else
+          runPost req'
     QueryString -> do
-      -- send all parameters as query strings
+      req <- parseRequest $ httpMethod ++ " " ++ url
       let ps = [ bimap BSU.fromString (BSU.fromString <$>) x | x <- params ]
-      req <- parseRequest $ "POST " ++ url
-      runPost (setRequestQueryString ps req)
+          req' = setRequestQueryString ps req
+      if optDebug $ options env
+        then do
+          putStrLn "sending all parameters in the query string"
+          pPrint req'
+          runPost req'
+        else
+          runPost req'
   where
     runPost query = do
       eresp <- try $ httpBS query :: IO (Either HttpException (Response BSU.ByteString))
       case eresp of
         Left (HttpExceptionRequest _ x) -> return $ Left $ show x
         Left (InvalidUrlException u _) -> return $ Left u
-        Right resp -> return $ Right $ getResponseBody resp
+        Right resp -> do
+          let body = getResponseBody resp
+          if optDebug $ options env
+            then do
+              putStrLn "Response Status:"
+              print $ getResponseStatus resp
+              putStrLn "Response Headers:"
+              pPrint $ getResponseHeaders resp
+              putStrLn "Response Body:"
+              pPrint body
+              return $ Right body
+            else
+              return $ Right body
 
-fetchAuthRecord :: PostMode -> String -> [(String, Maybe String)] -> IO (Either String AuthRecord)
-fetchAuthRecord postmode url queries = do
-  eresp <- postRequest postmode url queries
+fetchAuthRecord :: Environment -> String -> ParamsMode -> String -> [(String, Maybe String)] -> IO (Either String AuthRecord)
+fetchAuthRecord env httpMethod paramsMode url queries = do
+  eresp <- sendRequest env httpMethod paramsMode url queries
   case eresp of
     Left err -> return $ Left err
     Right resp ->
@@ -160,16 +188,17 @@ renewAccessToken _ _ Nothing = return $ Left "renewAccessToken: Nothing as refre
 renewAccessToken env (Just serv) (Just rft) = do
   let ss = services env
       qs = [ ("client_id", serviceFieldLookup ss serv client_id)
-           , ("client_secret", serviceFieldLookup ss serv client_secret) 
+           , ("client_secret", serviceFieldLookup ss serv client_secret)
            , ("grant_type", Just "refresh_token")
            , ("refresh_token", Just rft)
            ]
+  let httpMethod = fromMaybe "GET" $ serviceFieldLookup ss serv token_http_method
   case serviceFieldLookup ss serv token_endpoint of
     Nothing -> error "renewAccessToken: missing token_endpoint field in Services."
     Just tokenEndpoint ->
-      case serviceFieldLookup ss serv token_postmode of
-        Nothing -> error "renewAccessToken: missing token_postmode field in Services."
-        Just postmode -> fetchAuthRecord (decodePostMode postmode) tokenEndpoint qs
+      case serviceFieldLookup ss serv token_params_mode of
+        Nothing -> error "renewAccessToken: missing token_params_mode field in Services."
+        Just paramsMode -> fetchAuthRecord env httpMethod (decodeParamsMode paramsMode) tokenEndpoint qs
 
 forceRenew :: Environment -> EmailAddress -> IO ()
 forceRenew env email_ = do
@@ -205,12 +234,13 @@ getAccessToken env (Just serv) authcode = do
            , ("grant_type", Just "authorization_code")
            , ("redirect_uri", serviceFieldLookup ss serv redirect_uri)
            ]
+  let httpMethod = fromMaybe "GET" $ serviceFieldLookup ss serv token_http_method
   case serviceFieldLookup ss serv token_endpoint of
     Nothing -> error "getAccessToken: missing token_endpoint field in Services."
     Just tokenEndpoint ->
-      case serviceFieldLookup ss serv token_postmode of
-        Nothing -> error "getAccessToken: missing token_postmode field in Services."
-        Just postmode -> fetchAuthRecord (decodePostMode postmode) tokenEndpoint qs
+      case serviceFieldLookup ss serv token_params_mode of
+        Nothing -> error "getAccessToken: missing token_params_mode field in Services."
+        Just paramsMode -> fetchAuthRecord env httpMethod (decodeParamsMode paramsMode) tokenEndpoint qs
 
 generateAuthPage :: Environment -> Maybe String -> EmailAddress -> IO (Either String BSU.ByteString)
 generateAuthPage _ Nothing _ = return $ Left "generateAuthPage: missing service string"
@@ -221,14 +251,14 @@ generateAuthPage env (Just serv) email_ = do
            , ("response_type", Just "code")
            , ("scope", serviceFieldLookup ss serv auth_scope)
            , ("login_hint", Just $ unEmailAddress email_)
-           , ("tenant", serviceFieldLookup ss serv tenant)
            ]
+      httpMethod = fromMaybe "GET" $ serviceFieldLookup ss serv auth_http_method
   case serviceFieldLookup ss serv auth_endpoint of
     Nothing -> error "generateAuthPage: missing auth_endpoint field in Services."
     Just authEndpoint ->
-      case serviceFieldLookup ss serv auth_postmode of
-        Nothing -> error "generateAuthPage: missing auth_postmode field in Services."
-        Just postmode -> postRequest (decodePostMode postmode) authEndpoint qs
+      case serviceFieldLookup ss serv auth_params_mode of
+        Nothing -> error "generateAuthPage: missing auth_params_mode field in Services."
+        Just paramsMode -> sendRequest env httpMethod (decodeParamsMode paramsMode) authEndpoint qs
 
 localWebServer :: Environment -> Maybe String -> EmailAddress -> IO ()
 localWebServer env serv email_ = do
@@ -311,41 +341,4 @@ authorizeEmail env servName email_ = do
       putStrLn "Hit <Enter> when it has been completed --> "
       _ <- getLine
       putStrLn "Now try to fetch some email!"
-
-
--- Utilities for traditional password based email services
--- using [pass](https://www.passwordstore.org/) 
-
-getEmailPwd :: Environment -> EmailAddress -> IO ()
-getEmailPwd env email_ = do
-  password <- getEmailPwd' env email_
-  putStrLn password
-
-getEmailPwd' :: Environment -> EmailAddress -> IO String
-getEmailPwd' env email_ = do
-  psd <- E.lookupEnv "PASSWORD_STORE_DIR"
-  case psd of
-    Nothing -> do
-      case password_store $ config env of
-        Just password_store' -> do
-          E.setEnv "PASSWORD_STORE_DIR" password_store'
-          getEPwd
-        Nothing -> do
-          putStrLn "getEmailPwd': there is no 'password_store' configured nor PASSWORD_STORE_DIR environment variable set."
-          exitFailure
-    _ -> getEPwd
- where
-  getEPwd = do
-    case pass_cmd $ config env of
-      Just pass_cmd' -> do
-        (x, o, e) <- P.readProcessWithExitCode (exec pass_cmd')
-                       [head (args pass_cmd') ++ unEmailAddress email_] []
-        if x == ExitSuccess
-          then return $ head (lines o)
-          else do
-            putStr e
-            exitWith x
-      Nothing -> do
-        putStrLn "getEmailPwd': there is no 'pass_cmd' configured."
-        exitFailure
 

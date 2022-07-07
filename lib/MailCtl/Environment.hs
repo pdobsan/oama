@@ -11,7 +11,8 @@ module MailCtl.Environment
   , Service(..)
   , Services
   , serviceFieldLookup 
-  , PostMode(..)
+  , ParamsMode(..)
+  , HTTPMethod(..)
   , Configuration(..)
   , SystemState(..)
   , Environment(..)
@@ -70,18 +71,20 @@ data SystemState = SystemState
   }
   deriving (Show, Generic, ToJSON)
 
-data PostMode = RequestBody | QueryString
+data ParamsMode = RequestBody | QueryString
+data HTTPMethod = POST | GET
 
 data Service = Service
-  { auth_endpoint  :: Maybe String
-  , auth_postmode  :: Maybe String
-  , token_endpoint :: Maybe String
-  , token_postmode :: Maybe String
-  , redirect_uri   :: Maybe String
-  , auth_scope     :: Maybe String
-  , client_id      :: Maybe String
-  , client_secret  :: Maybe String
-  , tenant         :: Maybe String
+  { auth_endpoint     :: Maybe String
+  , auth_http_method  :: Maybe String
+  , auth_params_mode  :: Maybe String
+  , token_endpoint    :: Maybe String
+  , token_http_method :: Maybe String
+  , token_params_mode :: Maybe String
+  , redirect_uri      :: Maybe String
+  , auth_scope        :: Maybe String
+  , client_id         :: Maybe String
+  , client_secret     :: Maybe String
   }
   deriving (Show, Generic, ToJSON, FromJSON)
 

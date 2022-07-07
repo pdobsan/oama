@@ -3,6 +3,15 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module MailCtl.Utilities
+ ( logger
+ , pprintEnv
+ , enableCron
+ , disableCron
+ , statusCron
+ , listAccounts
+ , fetch
+ , getEmailPwd
+ )
 where
 
 import Data.Text qualified as T
@@ -11,6 +20,7 @@ import Foreign.C.String
 import MailCtl.CommandLine
 import MailCtl.Environment
 import System.Directory qualified as D
+import System.Environment qualified as E
 import System.Exit (ExitCode (ExitSuccess), exitWith, exitSuccess, exitFailure)    
 import System.Posix.Syslog (syslog, Priority(..))
 import System.Process qualified as P    
@@ -82,4 +92,41 @@ fetch env fdm_config_ accounts = do
  where
   run _  False = fetchAccounts fdm_config_ accounts
   run ce True  = if ce then fetchAccounts fdm_config_ accounts else exitSuccess
+
+
+-- Utilities for traditional password based email services
+-- using [pass](https://www.passwordstore.org/) 
+
+getEmailPwd :: Environment -> EmailAddress -> IO ()
+getEmailPwd env email_ = do
+  password <- getEmailPwd' env email_
+  putStrLn password
+
+getEmailPwd' :: Environment -> EmailAddress -> IO String
+getEmailPwd' env email_ = do
+  psd <- E.lookupEnv "PASSWORD_STORE_DIR"
+  case psd of
+    Nothing -> do
+      case password_store $ config env of
+        Just password_store' -> do
+          E.setEnv "PASSWORD_STORE_DIR" password_store'
+          getEPwd
+        Nothing -> do
+          putStrLn "getEmailPwd': there is no 'password_store' configured nor PASSWORD_STORE_DIR environment variable set."
+          exitFailure
+    _ -> getEPwd
+ where
+  getEPwd = do
+    case pass_cmd $ config env of
+      Just pass_cmd' -> do
+        (x, o, e) <- P.readProcessWithExitCode (exec pass_cmd')
+                       [head (args pass_cmd') ++ unEmailAddress email_] []
+        if x == ExitSuccess
+          then return $ head (lines o)
+          else do
+            putStr e
+            exitWith x
+      Nothing -> do
+        putStrLn "getEmailPwd': there is no 'pass_cmd' configured."
+        exitFailure
 

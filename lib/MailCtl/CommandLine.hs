@@ -13,6 +13,7 @@ import Paths_mailctl (version)
 data Opts = Opts
   { optConfig  :: !String
   , optCron    :: !Bool
+  , optDebug   :: !Bool
   , optCommand :: !Command
   }
   deriving (Eq, Show)
@@ -39,6 +40,7 @@ programOptions =
   Opts <$> strOption (long "config-file" <> short 'c' <> metavar "<config>"
            <> value "" <> help "Configuration file")
     <*> switch ( long "run-by-cron" <> help "mailctl invoked by cron" )
+    <*> switch ( long "debug" <> help "Print HTTP traffic to stdout" )
     <*> hsubparser (getpwd <> oauth2 <> renew <> authorize <> fetch <> cron <> listEmails <> printEnv)
 
 data CronOps = EnableCron | DisableCron | StatusCron 
