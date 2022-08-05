@@ -22,6 +22,10 @@ still may be "wrapped" with `fdm` and `msmtp` with the help of `mailctl`.
 a mailing system comprised of `msmtp`, `fdm`, and `(neo)mutt` or similar
 ones.
 
+If you are using `fdm` with no complex desktop system you might also be
+interested in my [mailnotify](https://github.com/pdobsan/mailnotify) program
+which generates pop-up notifications about incoming email messages.
+
 `mailctl` has been successfully used with Google/Gmail, operation with other
 Oauth2 service providers are planned.
 
@@ -150,7 +154,7 @@ Clone this repository and invoke `cabal`:
     cabal update
     cabal install
 
-`mailctl` is known to build with `ghc 8.10.7` and `ghc 9.2.3`
+`mailctl` is known to build with `ghc 8.10.7` and `ghc 9.2.4`
 
 
 ## Logging
