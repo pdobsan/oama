@@ -185,12 +185,12 @@ fetchAuthRecord env httpMethod paramsMode url queries = do
 renewAccessToken :: Environment -> Maybe String -> Maybe String -> IO (Either String AuthRecord)
 renewAccessToken _ Nothing _ = return $ Left "renewAccessToken: Nothing as service string argument"
 renewAccessToken _ _ Nothing = return $ Left "renewAccessToken: Nothing as refresh token argument"
-renewAccessToken env (Just serv) (Just rft) = do
+renewAccessToken env (Just serv) rft = do
   let ss = services env
       qs = [ ("client_id", serviceFieldLookup ss serv client_id)
            , ("client_secret", serviceFieldLookup ss serv client_secret)
            , ("grant_type", Just "refresh_token")
-           , ("refresh_token", Just rft)
+           , ("refresh_token", rft)
            ]
   let httpMethod = fromMaybe "GET" $ serviceFieldLookup ss serv token_http_method
   case serviceFieldLookup ss serv token_endpoint of

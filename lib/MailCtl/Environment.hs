@@ -26,7 +26,7 @@ import Data.Time.Clock
 import Data.Yaml
 import GHC.Generics
 import MailCtl.CommandLine
-import Options.Applicative (execParser)
+import Options.Applicative (customExecParser, prefs,showHelpOnEmpty)
 import System.Directory qualified as D
 import System.Exit (ExitCode (ExitSuccess), exitWith, exitFailure)    
 import System.Process qualified as P    
@@ -120,7 +120,7 @@ loadEnvironment = do
 mkEnvironment :: IO Environment
 mkEnvironment = do
   configDir <- D.getXdgDirectory D.XdgConfig "mailctl"
-  opts <- execParser optsParser
+  opts <- customExecParser (prefs showHelpOnEmpty) optsParser
   let cfgOption = optConfig opts
       configFile = if cfgOption == "" then configDir <> "/config.yaml" else cfgOption
   configExists <- D.doesFileExist configFile
@@ -132,7 +132,7 @@ mkEnvironment = do
         Right cfg' ->
           (Environment cfg' <$> (SystemState <$> getCrontab <*> return False)
             <*> readServices (services_file cfg'))
-            <*> execParser optsParser
+            <*> customExecParser (prefs showHelpOnEmpty) optsParser
     else do
       putStrLn $ "Can't find configuration file: " <> configFile
       exitFailure
