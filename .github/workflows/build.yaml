@@ -1,20 +1,17 @@
-name: Build
+name: Build Matrix
 
 on:
-  workflow_call:
   workflow_dispatch:
   push:
     branches: [main]
-    # Pattern matched against refs/tags
-    tags:
-      - '*' # Push events to every tag not containing /
 
 jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        ghc: ['9.2.3']
+        ghc: ['8.10.7', '9.2.4']
         cabal: [latest]
         os: [ubuntu-latest]
     name: Haskell GHC ${{ matrix.ghc }}
@@ -29,52 +26,23 @@ jobs:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: ${{ matrix.cabal }}
 
-      - name: Cache
+      - name: Install external dependencies
+        run: |
+          sudo apt-get update
+
+      - name: Freeze
+        run: cabal freeze
+
+      - name: Restore ~/.cabal
         uses: actions/cache@v3
-        env:
-          cache-name: cache-cabal
         with:
           path: ~/.cabal
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/*.cabal') }}-${{ hashFiles('**/cabal.project') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
+          key: ${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
 
       - name: Install dependencies
-        run: cabal build all --only-dependencies
+        run: cabal build --only-dependencies
 
-      - name: Build
+      - name: Build & Install
         run: |
-          export PATH=~/.cabal/bin:$PATH
-          cabal build all
+          cabal build
           cabal install --install-method=copy --overwrite-policy=always --enable-executable-stripping
-          mailctl --version
-          VERSION=$(grep '^version:' mailctl.cabal | awk '{print $2}')
-          EXE_NAME=mailctl-$VERSION-${{ runner.os }}
-          cp ~/.cabal/bin/mailctl $EXE_NAME
-          sha256sum $EXE_NAME > $EXE_NAME.sha256
-          sed -e "s/^pkgver=.*$/pkgver=$VERSION/" aur/PKGBUILD >PKGBUILD
-          echo "package_version=$VERSION" >> $GITHUB_ENV
-          ls -l
-
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          body_path: Release.md
-          files: mailctl-*
-
-      - name: Release AUR package
-        uses: KSXGitHub/github-actions-deploy-aur@v2.3.0
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          pkgname: mailctl-bin
-          pkgbuild: PKGBUILD
-          assets: |
-            aur/.INSTALL
-          commit_username: ${{ secrets.AUR_USERNAME }}
-          commit_email: ${{ secrets.AUR_EMAIL }}
-          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: release mailctl-bin ${{ env.package_version }}
-
