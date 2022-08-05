@@ -17,7 +17,7 @@ release: build
 	git push
 	gh release create $(VERSION) --generate-notes
 	gh release upload $(VERSION) $(PROGX) $(PROGX).sha256 cabal.project.freeze
-	git fetch --tags upstream
+	git fetch --tags origin
 
 cabal.project.freeze: freeze
 freeze:

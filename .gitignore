@@ -17,8 +17,8 @@ dist/
 dist-newstyle/
 cabal.project.local
 cabal.project.freeze
-mailctl-Linux-x86_64
-mailctl-Linux-x86_64.sha256
+mailctl-*-Linux-x86_64
+mailctl-*-Linux-x86_64.sha256
 .ghc.environment.*
 # stack
 .stack-work/
