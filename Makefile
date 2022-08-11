@@ -3,6 +3,7 @@ PROG = mailctl
 # note $$2 for make eats the first $ !
 VERSION = $(shell grep '^version:' $(PROG).cabal | awk '{print $$2}')
 PROGX = $(PROG)-$(VERSION)-$(shell uname -s)-$(shell uname -m)
+PROG_G = $(PROG)-*-$(shell uname -s)-$(shell uname -m)
 GHC = 9.2.4
 
 help:
@@ -47,7 +48,7 @@ aur: aur/PKGBUILD git-check
 	gh workflow run aur.yaml
 
 clean:
-	rm -f $(PROGX) $(PROGX).sha256
+	rm -f $(PROG_G) $(PROG_G).sha256
 	rm -f *.freeze
 
 clobber: clean
