@@ -87,6 +87,28 @@ example:
 
 Shell completion for `bash`, `zsh` and `fish` shells are provided.
 
+### Authorization for Organizational/Institutional accounts
+
+The authorization process of Organizational/Institutional accounts can
+slightly be different from of individual accounts and that might cause the
+authorization to fail. That is definitively the case for Google.
+
+When you invoke `mailctl` to authorize an account like this below:
+
+    mailctl authorize <service> <email>
+
+the program takes you to a login page at the given `<service>` and derived
+from the `<email>` address. In the case of `username@company.com` that could
+be a different login page from the "normal" login page. The solution is to
+invoke authorization like:
+
+    mailctl authorize <service> <company>
+
+where `<company>` is just a name not a complete email address. Then simply pick
+the right account on Google's login page. Since now the only usage of
+`<company>` here is for the name of the `.auth` file `mailctl` will create you
+just need to pick something that makes sense and doesn't interferes with your
+other accounts.
 
 ## Configuration
 
