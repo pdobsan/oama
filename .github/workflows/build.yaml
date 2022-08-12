@@ -4,6 +4,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+  schedule:
+    # additionally run three times per week at midnight to maintain cache
+    - cron: '0 0 * * Mon,Wed,Sat'
 
 jobs:
   build:
