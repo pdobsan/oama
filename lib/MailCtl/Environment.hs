@@ -28,7 +28,7 @@ import GHC.Generics
 import MailCtl.CommandLine
 import Options.Applicative (customExecParser, prefs,showHelpOnEmpty)
 import System.Directory qualified as D
-import System.Exit (ExitCode (ExitSuccess), exitWith, exitFailure)    
+import System.Exit (ExitCode (ExitSuccess), exitFailure)    
 import System.Process qualified as P    
 
 newtype EmailAddress = EmailAddress { unEmailAddress :: String }
@@ -66,7 +66,7 @@ data Configuration = Configuration
   deriving (Show, Generic, ToJSON, FromJSON)
 
 data SystemState = SystemState
-  { crontab      :: String
+  { crontab      :: Maybe String
   , cron_enabled :: Bool
   }
   deriving (Show, Generic, ToJSON)
@@ -137,18 +137,22 @@ mkEnvironment = do
       putStrLn $ "Can't find configuration file: " <> configFile
       exitFailure
 
-getCrontab :: IO String
+getCrontab :: IO (Maybe String)
 getCrontab = do
-  (x, o, e) <- P.readProcessWithExitCode "crontab" ["-l"] ""
-  if x == ExitSuccess
-    then do
-      let xs = T.lines $ T.pack o
-          ys = [ y | y <- xs, T.isInfixOf "mailctl" y ]
-          z  = T.concat ys
-      return $ T.unpack z
-    else do
-      putStr e
-      exitWith x
+  cronExists <- D.doesFileExist "/usr/bin/crontab"
+  if cronExists then do
+    (x, o, e) <- P.readProcessWithExitCode "crontab" ["-l"] ""
+    if x == ExitSuccess
+      then do
+        let xs = T.lines $ T.pack o
+            ys = [ y | y <- xs, T.isInfixOf "mailctl" y ]
+            z  = T.concat ys
+        return $ Just $ T.unpack z
+      else do
+        putStr e
+        return Nothing
+  else
+    return Nothing
 
 isCronEnabled :: Environment -> IO Bool
 isCronEnabled env = do

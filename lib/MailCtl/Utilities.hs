@@ -14,6 +14,7 @@ module MailCtl.Utilities
  )
 where
 
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 import Foreign.C.String
@@ -62,7 +63,7 @@ statusCron env = do
   if cron_enabled $ system_state env
     then do
       putStrLn "Running from cron is enabled:"
-      putStrLn $ crontab $ system_state env
+      putStrLn $ fromMaybe "WARNING: there is no crontab." $ crontab $ system_state env
     else putStrLn "Running from cron is disabled."
 
 listAccounts :: String -> IO ()

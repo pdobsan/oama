@@ -1,6 +1,6 @@
 cabal-version:      3.6
 name:               mailctl
-version:            0.6.5
+version:            0.7.0
 license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Peter Dobsan

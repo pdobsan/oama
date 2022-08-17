@@ -51,5 +51,8 @@ clean:
 	rm -f $(PROG_G) $(PROG_G).sha256
 	rm -f *.freeze
 
-clobber: clean
+uninstall:
+	rm -f ~/.cabal/bin/$(PROG)
+
+clobber: clean uninstall
 	cabal clean
