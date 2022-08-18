@@ -20,7 +20,7 @@ git-check:
 	git status -s
 	git diff --quiet
 
-release: build
+release: build aur/PKGBUILD
 	git push
 	gh release create $(VERSION) --generate-notes
 	gh release upload $(VERSION) $(PROGX) $(PROGX).sha256 cabal.project.freeze

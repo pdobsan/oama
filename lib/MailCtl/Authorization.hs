@@ -224,9 +224,8 @@ forceRenew env email_ = do
 
 -- initial registration for authorization credentials
 
-getAccessToken :: Environment -> Maybe String -> String -> IO (Either String AuthRecord)
-getAccessToken _ Nothing _ = return $ Left "getAccessToken: missing service string"
-getAccessToken env (Just serv) authcode = do
+getAccessToken :: Environment -> String -> String -> IO (Either String AuthRecord)
+getAccessToken env serv authcode = do
   let ss = services env
       qs = [ ("client_id", serviceFieldLookup ss serv client_id)
            , ("client_secret", serviceFieldLookup ss serv client_secret)
@@ -242,9 +241,8 @@ getAccessToken env (Just serv) authcode = do
         Nothing -> error "getAccessToken: missing token_params_mode field in Services."
         Just paramsMode -> fetchAuthRecord env httpMethod (decodeParamsMode paramsMode) tokenEndpoint qs
 
-generateAuthPage :: Environment -> Maybe String -> EmailAddress -> IO (Either String BSU.ByteString)
-generateAuthPage _ Nothing _ = return $ Left "generateAuthPage: missing service string"
-generateAuthPage env (Just serv) email_ = do
+generateAuthPage :: Environment -> String -> EmailAddress -> IO (Either String BSU.ByteString)
+generateAuthPage env serv email_ = do
   let ss = services env
       qs = [ ("client_id", serviceFieldLookup ss serv client_id)
            , ("redirect_uri", serviceFieldLookup ss serv redirect_uri)
@@ -260,7 +258,7 @@ generateAuthPage env (Just serv) email_ = do
         Nothing -> error "generateAuthPage: missing auth_params_mode field in Services."
         Just paramsMode -> sendRequest env httpMethod (decodeParamsMode paramsMode) authEndpoint qs
 
-localWebServer :: Environment -> Maybe String -> EmailAddress -> IO ()
+localWebServer :: Environment -> String -> EmailAddress -> IO ()
 localWebServer env serv email_ = do
   authPage <- generateAuthPage env serv email_
   case authPage of
@@ -268,6 +266,7 @@ localWebServer env serv email_ = do
     Right authP -> do
       let startAuth :: TW.ResponderM a
           startAuth = TW.send $ TW.html $ fromStrict authP
+          localWebServerPort = getPortFromURIStr $ serviceFieldLookup (services env) serv redirect_uri
 
           finishAuth :: TW.ResponderM a
           finishAuth = do
@@ -280,7 +279,7 @@ localWebServer env serv email_ = do
                 now <- liftIO getCurrentTime
                 let expire = addUTCTime (expires_in authr - 300) now
                     expDate = formatTime defaultTimeLocale timeStampFormat expire
-                    authRec = authr { exp_date = Just expDate, email = Just email_, service = serv }
+                    authRec = authr { exp_date = Just expDate, email = Just email_, service = Just serv }
                 liftIO $ writeAuthRecord env email_ authRec
                 TW.send $ TW.html $ BLU.fromString $
                   printf "<h4>Received new refresh and access tokens for %s</h4>" (unEmailAddress email_)
@@ -305,7 +304,7 @@ localWebServer env serv email_ = do
             let req' = BLU.fromString $ show req
             TW.send $ TW.html $ "localWebServer: " <> "request not found ...\n" <> req'
 
-      run 8080 $ foldr ($) (TW.notFound missing) routes
+      run localWebServerPort $ foldr ($) (TW.notFound missing) routes
 
 makeAuthRecord :: Environment -> String -> EmailAddress -> AuthRecord
 makeAuthRecord env servName email_ =
@@ -336,8 +335,9 @@ authorizeEmail env servName email_ = do
         Just redirect -> do
           putStrLn $ "To grant OAuth2 access to " ++ unEmailAddress email_ ++ " visit the local URL below with your browser."
           putStrLn $ redirect ++ "/start"
-      _ <- forkIO $ localWebServer env (Just serv) email_
+      _ <- forkIO $ localWebServer env serv email_
       putStrLn "Authorization started ... "
+      -- TODO terminate here based on feedback from the localWebServer 
       putStrLn "Hit <Enter> when it has been completed --> "
       _ <- getLine
       putStrLn "Now try to fetch some email!"

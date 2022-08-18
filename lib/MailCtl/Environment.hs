@@ -5,17 +5,18 @@
 
 module MailCtl.Environment
   ( loadEnvironment
-  , EmailAddress(..)
+  , getPortFromURIStr
+  , serviceFieldLookup 
   , AuthRecord(..)
+  , Configuration(..)
+  , EmailAddress(..)
+  , Environment(..)
+  , HTTPMethod(..)
+  , ParamsMode(..)
   , Program(..)
   , Service(..)
   , Services
-  , serviceFieldLookup 
-  , ParamsMode(..)
-  , HTTPMethod(..)
-  , Configuration(..)
   , SystemState(..)
-  , Environment(..)
   )
 where
 
@@ -26,10 +27,12 @@ import Data.Time.Clock
 import Data.Yaml
 import GHC.Generics
 import MailCtl.CommandLine
+import Network.URI
 import Options.Applicative (customExecParser, prefs,showHelpOnEmpty)
 import System.Directory qualified as D
 import System.Exit (ExitCode (ExitSuccess), exitFailure)    
 import System.Process qualified as P    
+import Text.Printf
 
 newtype EmailAddress = EmailAddress { unEmailAddress :: String }
   deriving (Show, Generic, ToJSON, FromJSON)
@@ -98,9 +101,42 @@ data Environment = Environment
   }
   deriving Show
 
+defaultPORT :: Int
+defaultPORT = 8080
+
 serviceFieldLookup :: Services -> String -> (Service -> Maybe String) -> Maybe String
 serviceFieldLookup services_ servName field = field =<< M.lookup servName services_
 --serviceFieldLookup' services_ servName field = M.lookup servName services_ >>= field
+
+{-
+printURI :: String -> IO ()
+printURI uri = do
+  case parseURI uri of
+    Nothing   -> error $ printf "invalid redirect uri: %s" uri
+    Just uri_ -> do
+      printf "uriScheme: %s\n" $ uriScheme uri_
+      case uriAuthority uri_ of
+        Nothing   -> error "no Authority"
+        Just auth -> do
+          printf "uriUserInfo: %s\n" $ uriUserInfo auth
+          printf "uriRegName: %s\n" $ uriRegName auth
+          printf "uriPort: %s\n" $ uriPort auth
+      printf "uriPath: %s\n" $ uriPath uri_
+      printf "uriFragment: %s\n" $ uriFragment uri_
+      printf "uriQuery: %s\n" $ uriQuery uri_
+-}
+
+getPortFromURIStr :: Maybe String -> Int
+getPortFromURIStr Nothing    = defaultPORT
+getPortFromURIStr (Just uri) = case parseURI uri of
+  Nothing   -> error $ printf "invalid redirect uri: %s" uri
+  Just uri_ -> case uriAuthority uri_ of
+    Nothing   -> defaultPORT
+    Just auth -> convert (uriPort auth)
+ where
+  convert :: String -> Int
+  convert "" = defaultPORT
+  convert ps = read (tail ps)
 
 readServices :: FilePath -> IO Services
 readServices pfile = do
