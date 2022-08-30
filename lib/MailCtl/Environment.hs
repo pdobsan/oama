@@ -195,4 +195,3 @@ isCronEnabled env = do
   case env.config.cron_indicator of
     Just cronflag -> D.doesFileExist cronflag
     Nothing -> return False
-
