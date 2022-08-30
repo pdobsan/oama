@@ -1,49 +1,65 @@
-module MailCtl.CommandLine
-  ( Opts(..)
-  , Command(..)
-  , CronOps(..)
-  , optsParser
-  )
-where
+module MailCtl.CommandLine (
+  Opts (..),
+  Command (..),
+  CronOps (..),
+  optsParser,
+) where
 
 import Data.Version (showVersion)
 import Options.Applicative
 import Paths_mailctl (version)
 
 data Opts = Opts
-  { optConfig  :: !String
-  , optCron    :: !Bool
-  , optDebug   :: !Bool
-  , optCommand :: !Command
+  { optConfig :: !String,
+    optCron :: !Bool,
+    optDebug :: !Bool,
+    optCommand :: !Command
   }
   deriving (Eq, Show)
 
-data Command = Getpwd String | Oauth2 String | Renew String | Authorize String String
-             |  ListEmails | PrintEnv | Fetch [String] | Cron CronOps
-      deriving (Eq, Show)
+data Command
+  = Getpwd String
+  | Oauth2 String
+  | Renew String
+  | Authorize String String
+  | ListEmails
+  | PrintEnv
+  | Fetch [String]
+  | Cron CronOps
+  deriving (Eq, Show)
 
 optsParser :: ParserInfo Opts
-optsParser = info
-  (helper <*> versionOption <*> programOptions)
-  (fullDesc <> progDesc "Mailctl provides IMAP/SMTP clients with the capabilities of renewal and authorization of OAuth2 credentials."
-  <> header "mailctl - Provide OAuth2 renewal and authorization capabilities."
-  )
+optsParser =
+  info
+    (helper <*> versionOption <*> programOptions)
+    ( fullDesc
+        <> progDesc "Mailctl provides IMAP/SMTP clients with the capabilities of renewal and authorization of OAuth2 credentials."
+        <> header "mailctl - Provide OAuth2 renewal and authorization capabilities."
+    )
 
 versionOption :: Parser (a -> a)
 versionOption = do
-  let verinfo = "mailctl version " <> showVersion version
-                <> "\nCopyright (C) Peter Dobsan 2022"
+  let verinfo =
+        "mailctl version "
+          <> showVersion version
+          <> "\nCopyright (C) Peter Dobsan 2022"
   infoOption verinfo (long "version" <> help "Show version")
 
 programOptions :: Parser Opts
 programOptions =
-  Opts <$> strOption (long "config-file" <> short 'c' <> metavar "<config>"
-           <> value "" <> help "Configuration file")
-    <*> switch ( long "run-by-cron" <> help "mailctl invoked by cron" )
-    <*> switch ( long "debug" <> help "Print HTTP traffic to stdout" )
+  Opts
+    <$> strOption
+      ( long "config-file"
+          <> short 'c'
+          <> metavar "<config>"
+          <> value ""
+          <> help "Configuration file"
+      )
+    <*> switch (long "run-by-cron" <> help "mailctl invoked by cron")
+    <*> switch (long "debug" <> help "Print HTTP traffic to stdout")
     <*> hsubparser (getpwd <> oauth2 <> renew <> authorize <> fetch <> cron <> listEmails <> printEnv)
 
-data CronOps = EnableCron | DisableCron | StatusCron 
+data CronOps = EnableCron | DisableCron | StatusCron
   deriving (Eq, Show)
 
 cron :: Mod CommandFields Command
@@ -52,13 +68,13 @@ cronOptions :: Parser Command
 cronOptions = Cron <$> (statusCron <|> enableCron <|> disableCron)
 
 statusCron :: Parser CronOps
-statusCron = flag StatusCron StatusCron ( long "status" <> help "Show cron status." )
+statusCron = flag StatusCron StatusCron (long "status" <> help "Show cron status.")
 
 enableCron :: Parser CronOps
-enableCron = flag' EnableCron ( long "enable" <> help "Enable running by cron." )
+enableCron = flag' EnableCron (long "enable" <> help "Enable running by cron.")
 
 disableCron :: Parser CronOps
-disableCron = flag' DisableCron ( long "disable" <> help "Disable running by cron." )
+disableCron = flag' DisableCron (long "disable" <> help "Disable running by cron.")
 
 fetch :: Mod CommandFields Command
 fetch = command "fetch" (info fetchOptions (progDesc "Get fdm to fetch all or the given accounts"))
@@ -83,8 +99,10 @@ renewOptions = Renew <$> strArgument (metavar "<email>" <> help "Email address")
 authorize :: Mod CommandFields Command
 authorize = command "authorize" (info authorizeOptions (progDesc "Authorize OAuth2 for service/email"))
 authorizeOptions :: Parser Command
-authorizeOptions = Authorize <$> strArgument (metavar "<service>" <> help "Service name")
-                             <*> strArgument (metavar "<email>" <> help "Email address")
+authorizeOptions =
+  Authorize
+    <$> strArgument (metavar "<service>" <> help "Service name")
+    <*> strArgument (metavar "<email>" <> help "Email address")
 
 listEmails :: Mod CommandFields Command
 listEmails = command "list" (info (pure ListEmails) (progDesc "List all accounts in fdm's config"))

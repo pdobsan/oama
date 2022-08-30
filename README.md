@@ -164,20 +164,20 @@ For Archlinux users there is also a package on AUR:
 
 ### Building from sources
 
-To build `mailctl` from source you need a Haskell development environment.
-Either your platform package system can provide this or you can use
-[ghcup](https://www.haskell.org/ghcup/). Once you have the `ghc` Haskell
-compiler and `cabal` etc. installed, follow the steps below:
+To build `mailctl` from source you need a Haskell development environment,
+with `ghc 9.2.4` or higher. Either your platform package system can provide
+this or you can use [ghcup](https://www.haskell.org/ghcup/). Once you have
+the `ghc` Haskell compiler and `cabal` etc. installed, follow the steps
+below:
 
 Clone this repository and invoke `cabal`:
 
     git clone https://github.com/pdobsan/mailctl.git
     cd mailctl
     cabal update
-    cabal install
+    cabal install --install-method=copy
 
-`mailctl` is known to build with `ghc 8.10.7` and `ghc 9.2.4`
-
+That installs `mailctl` into the `~/.cabal/bin/` directory.
 
 ## Logging
 

@@ -5,7 +5,7 @@ import MailCtl.CommandLine
 import MailCtl.Environment
 import MailCtl.Utilities
 import System.Posix.Internals (c_umask)
-import System.Posix.Syslog (withSyslog, Facility(Mail))
+import System.Posix.Syslog (Facility (Mail), withSyslog)
 
 main :: IO ()
 main = do
@@ -13,9 +13,9 @@ main = do
   withSyslog "mailctl" [] Mail $ do
     env <- loadEnvironment
     case optCommand $ options env of
-      Getpwd emailAddress             -> getEmailPwd env (EmailAddress emailAddress)
-      Oauth2 emailAddress             -> getEmailAuth env (EmailAddress emailAddress)
-      Renew emailAddress              -> forceRenew env (EmailAddress emailAddress)
+      Getpwd emailAddress -> getEmailPwd env (EmailAddress emailAddress)
+      Oauth2 emailAddress -> getEmailAuth env (EmailAddress emailAddress)
+      Renew emailAddress -> forceRenew env (EmailAddress emailAddress)
       Authorize servName emailAddress -> authorizeEmail env servName (EmailAddress emailAddress)
       Fetch emailAddresses ->
         case fdm_config $ config env of
@@ -37,5 +37,4 @@ main = do
         case cron_indicator $ config env of
           Just _ -> disableCron env
           Nothing -> putStrLn "main: there is no 'cron_indicator' configured."
-      PrintEnv                        -> pprintEnv env
-
+      PrintEnv -> pprintEnv env

@@ -1,18 +1,18 @@
 {-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module MailCtl.Utilities
- ( logger
- , pprintEnv
- , enableCron
- , disableCron
- , statusCron
- , listAccounts
- , fetch
- , getEmailPwd
- )
-where
+module MailCtl.Utilities (
+  logger,
+  pprintEnv,
+  enableCron,
+  disableCron,
+  statusCron,
+  listAccounts,
+  fetch,
+  getEmailPwd,
+) where
 
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
@@ -22,9 +22,9 @@ import MailCtl.CommandLine
 import MailCtl.Environment
 import System.Directory qualified as D
 import System.Environment qualified as E
-import System.Exit (ExitCode (ExitSuccess), exitWith, exitSuccess, exitFailure)    
-import System.Posix.Syslog (syslog, Priority(..))
-import System.Process qualified as P    
+import System.Exit (ExitCode (ExitSuccess), exitFailure, exitSuccess, exitWith)
+import System.Posix.Syslog (Priority (..), syslog)
+import System.Process qualified as P
 import Text.Pretty.Simple
 
 logger :: Priority -> String -> IO ()
@@ -70,33 +70,32 @@ listAccounts :: String -> IO ()
 listAccounts fdm_accounts_path = do
   xs <- TIO.readFile fdm_accounts_path
   let ys = T.lines xs
-      zs = [ extract y | y <- ys, T.isPrefixOf "account" y ]
-      z  = T.intercalate "\n" zs
+      zs = [extract y | y <- ys, T.isPrefixOf "account" y]
+      z = T.intercalate "\n" zs
       extract ls =
-        let ws          = T.splitOn "\"" ls
+        let ws = T.splitOn "\"" ls
             (_ : a : _) = ws
-        in  a
+         in a
   TIO.putStrLn "List of accounts fetched:"
   TIO.putStrLn z
 
 fetchAccounts :: FilePath -> [EmailAddress] -> IO ()
 fetchAccounts fdmConfig as = do
-  let bs = concat [ ["-a", unEmailAddress a] | a <- as ]
+  let bs = concat [["-a", unEmailAddress a] | a <- as]
   (x, _, _) <- P.readProcessWithExitCode "fdm" (["-f", fdmConfig, "-l"] ++ bs ++ ["fetch"]) ""
   if x == ExitSuccess then return () else exitWith x
 
 fetch :: Environment -> String -> [EmailAddress] -> IO ()
 fetch env fdm_config_ accounts = do
   let cronEnabled = cron_enabled $ system_state env
-      runByCron   = optCron $ options env
+      runByCron = optCron $ options env
   run cronEnabled runByCron
- where
-  run _  False = fetchAccounts fdm_config_ accounts
-  run ce True  = if ce then fetchAccounts fdm_config_ accounts else exitSuccess
-
+  where
+    run _ False = fetchAccounts fdm_config_ accounts
+    run ce True = if ce then fetchAccounts fdm_config_ accounts else exitSuccess
 
 -- Utilities for traditional password based email services
--- using [pass](https://www.passwordstore.org/) 
+-- using [pass](https://www.passwordstore.org/)
 
 getEmailPwd :: Environment -> EmailAddress -> IO ()
 getEmailPwd env email_ = do
@@ -105,29 +104,31 @@ getEmailPwd env email_ = do
 
 getEmailPwd' :: Environment -> EmailAddress -> IO String
 getEmailPwd' env email_ = do
-  psd <- E.lookupEnv "PASSWORD_STORE_DIR"
-  case psd of
-    Nothing -> do
-      case password_store $ config env of
-        Just password_store' -> do
-          E.setEnv "PASSWORD_STORE_DIR" password_store'
-          getEPwd
-        Nothing -> do
-          putStrLn "getEmailPwd': there is no 'password_store' configured nor PASSWORD_STORE_DIR environment variable set."
-          exitFailure
-    _ -> getEPwd
- where
-  getEPwd = do
-    case pass_cmd $ config env of
-      Just pass_cmd' -> do
-        (x, o, e) <- P.readProcessWithExitCode (exec pass_cmd')
-                       [head (args pass_cmd') ++ unEmailAddress email_] []
-        if x == ExitSuccess
-          then return $ head (lines o)
-          else do
-            putStr e
-            exitWith x
+  E.lookupEnv "PASSWORD_STORE_DIR"
+    >>= \case
       Nothing -> do
-        putStrLn "getEmailPwd': there is no 'pass_cmd' configured."
-        exitFailure
-
+        case password_store $ config env of
+          Just password_store' -> do
+            E.setEnv "PASSWORD_STORE_DIR" password_store'
+            getEPwd
+          Nothing -> do
+            putStrLn "getEmailPwd': there is no 'password_store' configured nor PASSWORD_STORE_DIR environment variable set."
+            exitFailure
+      _ -> getEPwd
+  where
+    getEPwd = do
+      case pass_cmd $ config env of
+        Just pass_cmd' -> do
+          (x, o, e) <-
+            P.readProcessWithExitCode
+              (exec pass_cmd')
+              [head (args pass_cmd') ++ unEmailAddress email_]
+              []
+          if x == ExitSuccess
+            then return $ head (lines o)
+            else do
+              putStr e
+              exitWith x
+        Nothing -> do
+          putStrLn "getEmailPwd': there is no 'pass_cmd' configured."
+          exitFailure
