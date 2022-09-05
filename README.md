@@ -150,9 +150,8 @@ like `gnome-keyring` might be used.
 
 ### Compiled static binaries
 
-Each release contains a compiled static executable of `mailctl` built on the
-most recent Ubuntu LTS platform. That should work on most Linux
-distributions. You can download the latest one from
+Each release contains a compiled static executable of `mailctl` which should
+work on most Linux distributions. You can download the latest one from
 [here](https://github.com/pdobsan/mailctl/releases/latest). Check the sha256
 check sum of the downloaded file. Rename it to `mailctl`, made it executable
 and put somewhere in your search path.

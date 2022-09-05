@@ -1,6 +1,6 @@
 cabal-version:      3.6
 name:               mailctl
-version:            0.7.1
+version:            0.7.2
 license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Peter Dobsan
@@ -10,11 +10,6 @@ data-files:
 
 common common
   default-language: Haskell2010
---  default-extensions:
---    ImportQualifiedPost,
---    OverloadedRecordDot,
---    OverloadedStrings,
---    ScopedTypeVariables,
   build-depends:
     aeson,
     base >=4.14.3.0,
