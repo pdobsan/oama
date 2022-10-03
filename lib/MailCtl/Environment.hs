@@ -75,7 +75,7 @@ data SystemState = SystemState
   }
   deriving (Show, Generic, ToJSON)
 
-data ParamsMode = RequestBody | QueryString
+data ParamsMode = RequestBody | RequestBodyForm | QueryString
 data HTTPMethod = POST | GET
 
 data Service = Service

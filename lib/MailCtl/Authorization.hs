@@ -19,7 +19,7 @@ import Data.ByteString.Lazy (fromStrict)
 import Data.ByteString.Lazy.UTF8 qualified as BLU
 import Data.ByteString.UTF8 qualified as BSU
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromJust, fromMaybe)
 import Data.Text (Text)
 import Data.Time.Clock
 import Data.Time.Format
@@ -128,6 +128,7 @@ getEmailAuth' env email_ = do
 
 decodeParamsMode :: String -> ParamsMode
 decodeParamsMode "request-body" = RequestBody
+decodeParamsMode "request-body-form" = RequestBodyForm
 decodeParamsMode "query-string" = QueryString
 decodeParamsMode "both" = RequestBody
 decodeParamsMode paramsMode = error $ "Invalid ParamsMode: " <> paramsMode
@@ -146,6 +147,18 @@ sendRequest env httpMethod paramsMode url params = do
           pPrint req'
           putStrLn "request body:"
           pPrint mps
+          runPost req'
+        else runPost req'
+    RequestBodyForm -> do
+      req <- parseRequest $ httpMethod ++ " " ++ url
+      let ps = [bimap BSU.fromString (BSU.fromString . fromJust) x | x <- params]
+          req' = setRequestBodyURLEncoded ps req
+      if optDebug $ options env
+        then do
+          putStrLn "sending all parameters in request body as form encoded"
+          pPrint req'
+          putStrLn "request body:"
+          pPrint ps
           runPost req'
         else runPost req'
     QueryString -> do
