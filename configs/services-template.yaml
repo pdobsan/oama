@@ -15,8 +15,8 @@ microsoft:
   auth_http_method: GET
   auth_params_mode: query-string
   token_endpoint: https://login.microsoftonline.com/common/oauth2/v2.0/token
-  token_http_method: GET
-  token_params_mode: query-string
+  token_http_method: POST
+  token_params_mode: request-body-form
   redirect_uri: http://localhost:8080
   auth_scope: https://outlook.office365.com/IMAP.AccessAsUser.All https://outlook.office365.com/SMTP.Send offline_access
   client_id: XXXXXXXXXXXXXXXXXXXXXXX
