@@ -129,7 +129,7 @@ endpoints. The accepted HTTP methods and how the request's parameters delivered
 must be configured in the `services.yaml` file for both endpoints. Options for
 `*_http_method` are `POST` and `GET`. Options for `*_params_mode` are
 `query-string`, `request-body` (JSON encoded), `request-body-form`
-(x-www-form-encoded) or `both`. When `both` is configured `mailctl` uses the
+(x-www-form-urlencoded) or `both`. When `both` is configured `mailctl` uses the
 `request-body` method since it is considered safer.
 
 If you encounter difficulties during *authorization* or *renewal* try to use
