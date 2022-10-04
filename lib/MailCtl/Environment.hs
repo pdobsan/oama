@@ -186,8 +186,11 @@ getCrontab = do
               z = T.concat ys
           return $ Just $ T.unpack z
         else do
-          putStr e
-          return Nothing
+          if not (T.isInfixOf "no crontab for" (T.pack e))
+            then do
+              putStr e
+              return Nothing
+            else return Nothing
     else return Nothing
 
 isCronEnabled :: Environment -> IO Bool
