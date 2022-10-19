@@ -1,5 +1,6 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -21,6 +22,7 @@ import Data.ByteString.UTF8 qualified as BSU
 import Data.Map qualified as M
 import Data.Maybe (fromJust, fromMaybe)
 import Data.Text (Text)
+import Data.Text.Lazy.Encoding qualified as TLE
 import Data.Time.Clock
 import Data.Time.Format
 import MailCtl.CommandLine
@@ -283,8 +285,10 @@ generateAuthPage env serv email_ = do
         Nothing -> error "generateAuthPage: missing auth_params_mode field in Services."
         Just paramsMode -> sendRequest env httpMethod (decodeParamsMode paramsMode) authEndpoint qs
 
-localWebServer :: Environment -> String -> EmailAddress -> IO ()
-localWebServer env serv email_ = do
+data AuthResult = AuthSuccess | AuthFailure
+
+localWebServer :: MVar AuthResult -> Environment -> String -> EmailAddress -> IO ()
+localWebServer mvar env serv email_ = do
   generateAuthPage env serv email_
     >>= \case
       Left errmsg -> error $ "localWebServer:\n" ++ errmsg
@@ -300,6 +304,7 @@ localWebServer env serv email_ = do
               liftIO (getAccessToken env serv code)
                 >>= \case
                   Left errmsg -> do
+                    liftIO $ putMVar mvar AuthFailure
                     error $ "localWebServer:\n" ++ errmsg
                   Right authr -> do
                     now <- liftIO getCurrentTime
@@ -307,6 +312,7 @@ localWebServer env serv email_ = do
                         expDate = formatTime defaultTimeLocale timeStampFormat expire
                         authRec = authr {exp_date = Just expDate, email = Just email_, service = Just serv}
                     liftIO $ writeAuthRecord env email_ authRec
+                    liftIO $ putMVar mvar AuthSuccess
                     TW.send $
                       TW.html $
                         BLU.fromString $
@@ -315,7 +321,6 @@ localWebServer env serv email_ = do
                               "<p>They have been saved encrypted in <kbd>%s/%s.auth</kbd></p>"
                               (oauth2_dir (config env))
                               (unEmailAddress email_)
-                            <> printf "<p>You may now quit the waiting <kbd>mailctl</kbd> program.</p>"
 
             casService :: TW.ResponderM a
             casService = do
@@ -332,8 +337,11 @@ localWebServer env serv email_ = do
             missing :: TW.ResponderM a
             missing = do
               req <- TW.request
-              let req' = BLU.fromString $ show req
-              TW.send $ TW.html $ "localWebServer: " <> "request not found ...\n" <> req'
+              liftIO $ printf "localWebServer - invalid request:\n"
+              pPrint req
+              let req' = TLE.encodeUtf8 $ pShowNoColor req
+              TW.send $ TW.html $ "<h3>localWebServer - invalid request</h3>"
+                <> "<pre>" <> req' <> "</pre>"
 
         Warp.runSettings localhostWebServer $ foldr ($) (TW.notFound missing) routes
 
@@ -368,9 +376,12 @@ authorizeEmail env servName email_ = do
         Just redirect -> do
           putStrLn $ "To grant OAuth2 access to " ++ unEmailAddress email_ ++ " visit the local URL below with your browser."
           putStrLn $ redirect ++ "/start"
-      _ <- forkIO $ localWebServer env serv email_
-      putStrLn "Authorization started ... "
-      -- TODO terminate here based on feedback from the localWebServer
-      putStrLn "Hit <Enter> when it has been completed --> "
-      _ <- getLine
-      putStrLn "Now try to fetch some email!"
+      mvar <- newEmptyMVar
+      _ <- forkIO $ localWebServer mvar env serv email_
+      printf "Authorization started ... \n"
+      takeMVar mvar
+        >>= \case
+          AuthSuccess -> printf "Received tokens for %s.\n" (unEmailAddress email_)
+          AuthFailure -> printf "Authorization failed.\n"
+      threadDelay 5_000_000
+      printf "... done.\n"
