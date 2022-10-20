@@ -10,9 +10,13 @@ arch=(x86_64)
 url="https://github.com/pdobsan/${_pkgname}"
 license=('BSD')
 groups=()
-depends=(gnupg fdm msmtp)
+depends=(gnupg)
 makedepends=()
-optdepends=('pass: stores, retrieves, generates, and synchronizes passwords securely'
+optdepends=(
+            'msmtp: an SMTP client'
+            'fdm: fetch and deliver mail'
+            'crond: daemon to execute scheduled commands'
+            'pass: stores, retrieves, generates, and synchronizes passwords securely'
             'gnome-keyring: Stores passwords and encryption keys'
            )
 provides=(${_pkgname})
