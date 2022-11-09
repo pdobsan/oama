@@ -5,7 +5,7 @@
 `mailctl` provides IMAP/SMTP clients with the capabilities of renewal and
 authorization of OAuth2 credentials.
 
-Many IMAP/SMTP clients, like [msmpt](https://marlam.de/msmtp/),
+Many IMAP/SMTP clients, like [msmtp](https://marlam.de/msmtp/),
 [fdm](https://github.com/nicm/fdm),
 [isync](http://isync.sourceforge.net/),
 [neomutt](https://github.com/neomutt/neomutt) or
