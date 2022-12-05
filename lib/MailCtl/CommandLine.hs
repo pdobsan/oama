@@ -21,7 +21,7 @@ data Command
   = Getpwd String
   | Oauth2 String
   | Renew String
-  | Authorize String String
+  | Authorize String String Bool
   | ListEmails
   | PrintEnv
   | Fetch [String]
@@ -103,6 +103,10 @@ authorizeOptions =
   Authorize
     <$> strArgument (metavar "<service>" <> help "Service name")
     <*> strArgument (metavar "<email>" <> help "Email address")
+    <*> switch
+      ( long "company"
+          <> help "Treat <email> as company/institution email address"
+      )
 
 listEmails :: Mod CommandFields Command
 listEmails = command "list" (info (pure ListEmails) (progDesc "List all accounts in fdm's config"))

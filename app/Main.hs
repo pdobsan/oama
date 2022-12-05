@@ -16,7 +16,7 @@ main = do
       Getpwd emailAddress -> getEmailPwd env (EmailAddress emailAddress)
       Oauth2 emailAddress -> getEmailAuth env (EmailAddress emailAddress)
       Renew emailAddress -> forceRenew env (EmailAddress emailAddress)
-      Authorize servName emailAddress -> authorizeEmail env servName (EmailAddress emailAddress)
+      Authorize servName emailAddress company -> authorizeEmail env servName (EmailAddress emailAddress) company
       Fetch emailAddresses ->
         case fdm_config $ config env of
           Just fdm_config_ -> fetch env fdm_config_ (EmailAddress <$> emailAddresses)

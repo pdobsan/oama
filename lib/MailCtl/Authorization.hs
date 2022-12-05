@@ -340,8 +340,12 @@ localWebServer mvar env serv email_ = do
               liftIO $ printf "localWebServer - invalid request:\n"
               pPrint req
               let req' = TLE.encodeUtf8 $ pShowNoColor req
-              TW.send $ TW.html $ "<h3>localWebServer - invalid request</h3>"
-                <> "<pre>" <> req' <> "</pre>"
+              TW.send $
+                TW.html $
+                  "<h3>localWebServer - invalid request</h3>"
+                    <> "<pre>"
+                    <> req'
+                    <> "</pre>"
 
         Warp.runSettings localhostWebServer $ foldr ($) (TW.notFound missing) routes
 
@@ -361,8 +365,8 @@ makeAuthRecord env servName email_ =
             (Just email_)
             (Just servName)
 
-authorizeEmail :: Environment -> String -> EmailAddress -> IO ()
-authorizeEmail env servName email_ = do
+authorizeEmail :: Environment -> String -> EmailAddress -> Bool -> IO ()
+authorizeEmail env servName email_ company = do
   authFileExists <- D.doesFileExist $ oauth2_dir (config env) ++ "/" ++ unEmailAddress email_ ++ ".auth"
   authrec <-
     if authFileExists
@@ -377,7 +381,10 @@ authorizeEmail env servName email_ = do
           putStrLn $ "To grant OAuth2 access to " ++ unEmailAddress email_ ++ " visit the local URL below with your browser."
           putStrLn $ redirect ++ "/start"
       mvar <- newEmptyMVar
-      _ <- forkIO $ localWebServer mvar env serv email_
+      _ <-
+        if company
+          then forkIO $ localWebServer mvar env serv (EmailAddress "company-mail")
+          else forkIO $ localWebServer mvar env serv email_
       printf "Authorization started ... \n"
       takeMVar mvar
         >>= \case
