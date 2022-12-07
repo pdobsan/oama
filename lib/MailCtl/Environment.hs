@@ -86,6 +86,7 @@ data Service = Service
     token_http_method :: Maybe String,
     token_params_mode :: Maybe String,
     redirect_uri :: Maybe String,
+    tenant :: Maybe String,
     auth_scope :: Maybe String,
     client_id :: Maybe String,
     client_secret :: Maybe String

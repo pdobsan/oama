@@ -259,13 +259,17 @@ getAccessToken env serv authcode = do
           ("grant_type", Just "authorization_code"),
           ("redirect_uri", serviceFieldLookup ss serv redirect_uri)
         ]
+      qs_ =
+        if serv == "microsoft"
+          then ("tenant", serviceFieldLookup ss serv tenant) : qs
+          else qs
   let httpMethod = fromMaybe "GET" $ serviceFieldLookup ss serv token_http_method
   case serviceFieldLookup ss serv token_endpoint of
     Nothing -> error "getAccessToken: missing token_endpoint field in Services."
     Just tokenEndpoint ->
       case serviceFieldLookup ss serv token_params_mode of
         Nothing -> error "getAccessToken: missing token_params_mode field in Services."
-        Just paramsMode -> fetchAuthRecord env httpMethod (decodeParamsMode paramsMode) tokenEndpoint qs
+        Just paramsMode -> fetchAuthRecord env httpMethod (decodeParamsMode paramsMode) tokenEndpoint qs_
 
 generateAuthPage :: Environment -> String -> EmailAddress -> IO (Either String BSU.ByteString)
 generateAuthPage env serv email_ = do
