@@ -1,0 +1,34 @@
+image: archlinux
+shell: true
+packages:
+  - ghcup-hs-bin
+  - sed
+  - gawk
+  - neovim
+  - xclip
+sources:
+  - https://git.sr.ht/~petrus/mailctl
+tasks:
+  - setup-buildenv: |
+      echo 'export PATH=~/.ghcup/bin:~/.cabal/bin:~/.local/bin:$PATH' >> .buildenv
+  - setup-ghc: |
+      mkdir -p .cabal/bin
+      ghcup install ghc 9.4.4
+      ghcup set ghc 9.4.4
+      ghcup install cabal 3.8.1.0
+      ghcup set cabal 3.8.1.0
+      ghcup list -c set
+      cabal update
+  - build-mailctl: |
+      cd mailctl
+      cabal build
+      cabal install --install-method=copy
+  - test: |
+      mkdir -p ~/.local/var/mailctl ~/.config/mailctl
+      mailctl -h
+      mailctl --version
+      #mailctl printenv
+      cp ~/.cabal/bin/mailctl $(mailctl --version | head -1 | awk '{print $1 "-" $3}')-$(uname -s)-$(uname -m)
+      ls -l
+artifacts:
+  - .cabal/bin/mailctl
