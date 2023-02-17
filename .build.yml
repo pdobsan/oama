@@ -37,11 +37,13 @@ tasks:
       mailctl --version
       #mailctl printenv
   - release: |
+      cd mailctl
       tag=$(git describe --exact-match 2>/dev/null || true)
       if [ -z "$tag" ]; then
         echo "Current commit is not a tag; not uploading."
         exit 0
       fi
+      cd
       reldir=$(mailctl --version | head -1 | awk '{print $1 "-" $3}')
       mkdir $reldir
       cp ~/.cabal/bin/mailctl $reldir/$reldir-$(uname -s)-$(uname -m)
