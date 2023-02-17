@@ -1,14 +1,20 @@
 image: archlinux
 shell: true
+oauth: git.sr.ht/OBJECTS:RW git.sr.ht/REPOSITORIES:RO git.sr.ht/PROFILE:RO
 packages:
   - ghcup-hs-bin
   - sed
   - gawk
   - neovim
   - xclip
+secrets:
+  - f8bf6699-0178-4e2e-8d63-2e4f61dd4803
 sources:
   - https://git.sr.ht/~petrus/mailctl
 tasks:
+  - mirror: |
+      cd mailctl
+      git push --mirror git@github.com:pdobsan/mailctl
   - setup-buildenv: |
       echo 'export PATH=~/.ghcup/bin:~/.cabal/bin:~/.local/bin:$PATH' >> .buildenv
   - setup-ghc: |
@@ -28,7 +34,10 @@ tasks:
       mailctl -h
       mailctl --version
       #mailctl printenv
-      cp ~/.cabal/bin/mailctl $(mailctl --version | head -1 | awk '{print $1 "-" $3}')-$(uname -s)-$(uname -m)
-      ls -l
+      reldir=$(mailctl --version | head -1 | awk '{print $1 "-" $3}')
+      mkdir $reldir
+      cp ~/.cabal/bin/mailctl $reldir/$reldir-$(uname -s)-$(uname -m)
+      cp mailctl/{LICENSE,README.md} $reldir
+      tar cfz mailctl.tgz $reldir
 artifacts:
-  - .cabal/bin/mailctl
+  - mailctl.tgz
