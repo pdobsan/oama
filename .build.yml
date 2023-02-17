@@ -5,6 +5,7 @@ packages:
   - ghcup-hs-bin
   - sed
   - gawk
+  - hut
   - neovim
   - xclip
 secrets:
@@ -19,6 +20,7 @@ tasks:
       git push --mirror git@github.com:pdobsan/mailctl
   - setup-buildenv: |
       echo 'export PATH=~/.ghcup/bin:~/.cabal/bin:~/.local/bin:$PATH' >> .buildenv
+      echo 'alias ls="ls --color=auto -alF --group-directories-first"' >> .buildenv
   - setup-ghc: |
       mkdir -p .cabal/bin
       ghcup install ghc 9.4.4
@@ -51,4 +53,4 @@ tasks:
       cp -r mailctl/configs $reldir
       tar cfz $reldir.tgz $reldir
       sha256sum $reldir.tgz > $reldir.tgz.sha256
-      hut git artifact upload --rev "$tag" $reldir.tgz $reldir.tgz.sha256
+      hut git artifact upload --rev "$tag" -r mailctl $reldir.tgz $reldir.tgz.sha256
