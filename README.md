@@ -76,13 +76,14 @@ example:
 
     % mailctl authorize -h
 
-    Usage: mailctl authorize <service> <email>
+    Usage: mailctl authorize <service> <email> [--company]
 
       Authorize OAuth2 for service/email
 
     Available options:
       <service>                Service name
       <email>                  Email address
+      --company                Treat <email> as company/institution email address
       -h,--help                Show this help text
 
 Shell completion for `bash`, `zsh` and `fish` shells are provided.
@@ -90,25 +91,11 @@ Shell completion for `bash`, `zsh` and `fish` shells are provided.
 ### Authorization for Organizational/Institutional accounts
 
 The authorization process of Organizational/Institutional accounts can
-slightly be different from of individual accounts and that might cause the
-authorization to fail. That is definitively the case for Google.
+slightly be different from of individual accounts That is definitively the
+case for Google. When you want authorize such an account invoke `mailctl`
+like this:
 
-When you invoke `mailctl` to authorize an account like this below:
-
-    mailctl authorize <service> <email>
-
-the program takes you to a login page at the given `<service>` and derived
-from the `<email>` address. In the case of `username@company.com` that could
-be a different login page from the "normal" login page. The solution is to
-invoke authorization like:
-
-    mailctl authorize <service> <company>
-
-where `<company>` is just a name not a complete email address. Then simply pick
-the right account on Google's login page. Since now the only usage of
-`<company>` here is for the name of the `.auth` file `mailctl` will create you
-just need to pick something that makes sense and doesn't interferes with your
-other accounts.
+    mailctl authorize <service> <email> --company
 
 ## Configuration
 
@@ -152,10 +139,9 @@ like `gnome-keyring` might be used.
 ### Compiled static binaries
 
 Each release contains a compiled static executable of `mailctl` which should
-work on most Linux distributions. You can download the latest one from
-[here](https://github.com/pdobsan/mailctl/releases/latest). Check the sha256
-check sum of the downloaded file. Rename it to `mailctl`, made it executable
-and put somewhere in your search path.
+work on most Linux distributions. Select the version you want to download from
+[sourcehut](https://git.sr.ht/~petrus/mailctl/refs), click on the version link
+and download the tar file containing the compiled executable from that page.
 
 #### Archlinux
 
@@ -172,7 +158,7 @@ below:
 
 Clone this repository and invoke `cabal`:
 
-    git clone https://github.com/pdobsan/mailctl.git
+    git clone https://git.sr.ht/~petrus/mailctl
     cd mailctl
     cabal update
     cabal install --install-method=copy
