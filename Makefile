@@ -4,7 +4,7 @@ PROG = mailctl
 VERSION = $(shell grep '^version:' $(PROG).cabal | awk '{print $$2}')
 PROGX = $(PROG)-$(VERSION)-$(shell uname -s)-$(shell uname -m)
 PROG_G = $(PROG)-*-$(shell uname -s)-$(shell uname -m)
-GHC = 9.4.3
+GHC = 9.4.4
 
 help:
 	@echo
