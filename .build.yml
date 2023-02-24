@@ -8,12 +8,15 @@ packages:
   - hut
   - neovim
   - xclip
+  - pacman-contrib
 secrets:
   - f8bf6699-0178-4e2e-8d63-2e4f61dd4803
+  - 4fa9ff23-b0bb-48a9-ac83-de3fe3e51052
 environment:
   GIT_SSH_COMMAND: ssh -o StrictHostKeyChecking=no
 sources:
   - https://git.sr.ht/~petrus/mailctl
+  - ssh://aur@aur.archlinux.org/mailctl-bin.git
 tasks:
   - mirror: |
       cd mailctl
@@ -37,11 +40,10 @@ tasks:
       mkdir -p ~/.local/var/mailctl ~/.config/mailctl
       mailctl -h
       mailctl --version
-      #mailctl printenv
   - release: |
       cd mailctl
       tag=$(git describe --exact-match 2>/dev/null || true)
-      if [ -z "$tag" ]; then
+      if [[ -z "$tag" ]]; then
         echo "Current commit is not a tag; not uploading."
         exit 0
       fi
@@ -51,6 +53,22 @@ tasks:
       cp ~/.cabal/bin/mailctl $reldir/$reldir-$(uname -s)-$(uname -m)
       cp mailctl/{LICENSE,README.md} $reldir
       cp -r mailctl/configs $reldir
+      cp -r mailctl/completions $reldir
       tar cfz $reldir.tgz $reldir
-      sha256sum $reldir.tgz > $reldir.tgz.sha256
-      hut git artifact upload --rev "$tag" -r mailctl $reldir.tgz $reldir.tgz.sha256
+      hut git artifact upload --rev "$tag" -r mailctl $reldir.tgz
+  - aur: |
+      cd mailctl
+      version=$(awk '/^version:/ {print $2}' mailctl.cabal)
+      tag=$(git describe --exact-match 2>/dev/null || true)
+      if [[ $tag !=  $version ]]; then
+        echo "tag = $tag and version = $version differ!"
+        exit 1
+      fi
+      cd aur
+      sed -i "s/pkgver=.*/pkgver=$tag/" PKGBUILD
+      makepkg --printsrcinfo >.SRCINFO
+      updpkgsums
+      cp PKGBUILD .INSTALL .SRCINFO ../mailctl-bin
+      cd ../mailctl-bin
+      git commit -a -m "release $tag"
+      git push
