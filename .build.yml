@@ -16,7 +16,7 @@ environment:
   GIT_SSH_COMMAND: ssh -o StrictHostKeyChecking=no
 sources:
   - https://git.sr.ht/~petrus/mailctl
-  - ssh://aur@aur.archlinux.org/mailctl-bin.git
+  - https://aur.archlinux.org/mailctl-bin
 tasks:
   - mirror: |
       cd mailctl
