@@ -33,6 +33,7 @@ tasks:
       ghcup list -c set
       cabal update
   - build-mailctl: |
+      cabal freeze
       cd mailctl
       cabal build
       cabal install --install-method=copy
@@ -54,6 +55,7 @@ tasks:
       cp mailctl/{LICENSE,README.md} $reldir
       cp -r mailctl/configs $reldir
       cp -r mailctl/completions $reldir
+      cp cabal.project.freeze $reldir
       tar cfz $reldir.tgz $reldir
       hut git artifact upload --rev "$tag" -r mailctl $reldir.tgz
   - aur: |
@@ -68,7 +70,7 @@ tasks:
       sed -i "s/pkgver=.*/pkgver=$tag/" PKGBUILD
       makepkg --printsrcinfo >.SRCINFO
       updpkgsums
-      cp PKGBUILD .INSTALL .SRCINFO ../mailctl-bin
-      cd ../mailctl-bin
+      cp PKGBUILD .INSTALL .SRCINFO ../../mailctl-bin
+      cd ../../mailctl-bin
       git commit -a -m "release $tag"
       git push

@@ -1,7 +1,5 @@
 # mailctl
 
-[![Build](https://github.com/pdobsan/mailctl/actions/workflows/build.yaml/badge.svg)](https://github.com/pdobsan/mailctl/actions/workflows/build.yaml)
-
 `mailctl` provides IMAP/SMTP clients with the capabilities of renewal and
 authorization of OAuth2 credentials.
 
