@@ -55,7 +55,7 @@ tasks:
       cp mailctl/{LICENSE,README.md} $reldir
       cp -r mailctl/configs $reldir
       cp -r mailctl/completions $reldir
-      cp cabal.project.freeze $reldir
+      cp mailctl/cabal.project.freeze $reldir
       tar cfz $reldir.tgz $reldir
       hut git artifact upload --rev "$tag" -r mailctl $reldir.tgz
   - aur: |
