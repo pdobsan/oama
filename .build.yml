@@ -9,7 +9,7 @@ packages:
   - neovim
   - xclip
   - pacman-contrib
-  - bash_completion
+  - bash-completion
   - keychain
 secrets:
   - f8bf6699-0178-4e2e-8d63-2e4f61dd4803
