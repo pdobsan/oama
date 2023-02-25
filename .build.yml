@@ -9,6 +9,8 @@ packages:
   - neovim
   - xclip
   - pacman-contrib
+  - bash_completion
+  - keychain
 secrets:
   - f8bf6699-0178-4e2e-8d63-2e4f61dd4803
   - 4fa9ff23-b0bb-48a9-ac83-de3fe3e51052
@@ -21,6 +23,12 @@ tasks:
       cd mailctl
       git push --mirror git@github.com:pdobsan/mailctl
   - setup-buildenv: |
+      cd mailctl
+      version=$(awk '/^version:/ {print $2}' mailctl.cabal)
+      tag=$(git describe --exact-match 2>/dev/null || echo none)
+      cd
+      echo "export VERSION=$version" >> .buildenv
+      echo "export TAG=$tag" >> .buildenv
       echo 'export PATH=~/.ghcup/bin:~/.cabal/bin:~/.local/bin:$PATH' >> .buildenv
       echo 'alias ls="ls --color=auto -alF --group-directories-first"' >> .buildenv
   - setup-ghc: |
@@ -41,14 +49,7 @@ tasks:
       mailctl -h
       mailctl --version
   - release: |
-      cd mailctl
-      tag=$(git describe --exact-match 2>/dev/null || true)
-      if [[ -z "$tag" ]]; then
-        echo "Current commit is not a tag; not uploading."
-        exit 0
-      fi
-      cd
-      reldir=$(mailctl --version | head -1 | awk '{print $1 "-" $3}')
+      reldir="mailctl-$VERSION"
       mkdir $reldir
       cp ~/.cabal/bin/mailctl $reldir/$reldir-$(uname -s)-$(uname -m)
       cp mailctl/{LICENSE,README.md} $reldir
@@ -56,17 +57,14 @@ tasks:
       cp -r mailctl/completions $reldir
       cp mailctl/cabal.project.freeze $reldir
       tar cfz $reldir.tgz $reldir
-      hut git artifact upload --rev "$tag" -r mailctl $reldir.tgz
-  - aur: |
-      cd mailctl
-      version=$(awk '/^version:/ {print $2}' mailctl.cabal)
-      tag=$(git describe --exact-match 2>/dev/null || true)
-      if [[ $tag !=  $version ]]; then
-        echo "tag = $tag and version = $version differ!"
-        exit 1
+      ln $reldir.tgz mailctl.tgz
+      if [[ $TAG != none ]]; then
+        hut git artifact upload --rev "$TAG" -r mailctl $reldir.tgz
       fi
-      cd aur
-      sed -i "s/pkgver=.*/pkgver=$tag/" PKGBUILD
+  - aur: |
+      eval $(keychain --eval f8bf6699-0178-4e2e-8d63-2e4f61dd4803 4fa9ff23-b0bb-48a9-ac83-de3fe3e51052)
+      cd mailctl/aur
+      sed -i "s/^pkgver=.*/pkgver=$TAG/" PKGBUILD
       makepkg --printsrcinfo >.SRCINFO
       updpkgsums
       cp PKGBUILD .INSTALL .SRCINFO ../../mailctl-bin
@@ -74,5 +72,11 @@ tasks:
       git clone ssh://aur@aur.archlinux.org/mailctl-bin.git
       cd mailctl-bin
       cp ../mailctl/aur/{PKGBUILD,.INSTALL,.SRCINFO} .
-      git commit -a -m "release $tag"
+      git commit -a -m "release $TAG"
       git push
+      if [[ $TAG !=  $VERSION ]]; then
+        echo "WARNING: tag=$TAG != version=$VERSION"
+      fi
+artifacts:
+  - mailctl.tgz
+
