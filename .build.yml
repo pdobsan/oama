@@ -16,7 +16,6 @@ environment:
   GIT_SSH_COMMAND: ssh -o StrictHostKeyChecking=no
 sources:
   - https://git.sr.ht/~petrus/mailctl
-  - https://aur.archlinux.org/mailctl-bin
 tasks:
   - mirror: |
       cd mailctl
@@ -71,6 +70,9 @@ tasks:
       makepkg --printsrcinfo >.SRCINFO
       updpkgsums
       cp PKGBUILD .INSTALL .SRCINFO ../../mailctl-bin
-      cd ../../mailctl-bin
+      cd
+      git clone ssh://aur@aur.archlinux.org/mailctl-bin.git
+      cd mailctl-bin
+      cp ../mailctl/aur/{PKGBUILD,.INSTALL,.SRCINFO} .
       git commit -a -m "release $tag"
       git push

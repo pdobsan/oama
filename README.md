@@ -1,5 +1,7 @@
 # mailctl
 
+[![builds.sr.ht status](https://builds.sr.ht/~petrus.svg)](https://builds.sr.ht/~petrus?)
+
 `mailctl` provides IMAP/SMTP clients with the capabilities of renewal and
 authorization of OAuth2 credentials.
 
