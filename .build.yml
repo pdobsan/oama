@@ -3,17 +3,12 @@ shell: true
 oauth: git.sr.ht/OBJECTS:RW git.sr.ht/REPOSITORIES:RO git.sr.ht/PROFILE:RO
 packages:
   - ghcup-hs-bin
-  - sed
-  - gawk
   - hut
-  - neovim
-  - xclip
   - pacman-contrib
   - bash-completion
-  - keychain
 secrets:
-  - f8bf6699-0178-4e2e-8d63-2e4f61dd4803
-  - 4fa9ff23-b0bb-48a9-ac83-de3fe3e51052
+  - f8bf6699-0178-4e2e-8d63-2e4f61dd4803    # ssh --> GitHub
+  - 4fa9ff23-b0bb-48a9-ac83-de3fe3e51052    # ssh --> AUR
 environment:
   GIT_SSH_COMMAND: ssh -o StrictHostKeyChecking=no
 sources:
@@ -69,18 +64,19 @@ tasks:
       fi
 
   - aur: |
-      eval $(keychain --eval f8bf6699-0178-4e2e-8d63-2e4f61dd4803 4fa9ff23-b0bb-48a9-ac83-de3fe3e51052)
       git clone ssh://aur@aur.archlinux.org/mailctl-bin.git
 
       cd mailctl/aur
-      sed -i "s/^pkgver=.*/pkgver=$TAG/" PKGBUILD
-      makepkg --printsrcinfo >.SRCINFO
+      sed -i "s/^pkgver=.*/pkgver=$VERSION/" PKGBUILD
       updpkgsums
+      makepkg --printsrcinfo >.SRCINFO
       cp PKGBUILD .INSTALL .SRCINFO ~/mailctl-bin
 
       cd ~/mailctl-bin
-      git commit -a -m "release $TAG"
-      git push
+      if [[ $TAG != none ]]; then
+        git commit -a -m "release $TAG"
+        git push
+      fi
 
       if [[ $TAG !=  $VERSION ]]; then
         echo "WARNING: tag=$TAG != version=$VERSION"
