@@ -40,7 +40,7 @@ tasks:
       cd mailctl
       cabal freeze
       cabal build
-      cabal install
+      cabal install --install-method copy --overwrite-policy always
 
   - test: |
       mkdir -p ~/.local/var/mailctl ~/.config/mailctl
