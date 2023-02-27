@@ -9,13 +9,12 @@ packages:
 secrets:
   - f8bf6699-0178-4e2e-8d63-2e4f61dd4803    # ssh --> GitHub
   - 4fa9ff23-b0bb-48a9-ac83-de3fe3e51052    # ssh --> AUR
-environment:
-  GIT_SSH_COMMAND: ssh -o StrictHostKeyChecking=no
 sources:
   - https://git.sr.ht/~petrus/mailctl
 tasks:
   - mirror: |
       cd mailctl
+      export GIT_SSH_COMMAND="ssh -i ~/.ssh/f8bf6699-0178-4e2e-8d63-2e4f61dd4803 -o StrictHostKeyChecking=no"
       git push --mirror git@github.com:pdobsan/mailctl
 
   - setup-buildenv: |
@@ -64,6 +63,7 @@ tasks:
       fi
 
   - aur: |
+      export GIT_SSH_COMMAND="ssh -i ~/.ssh/4fa9ff23-b0bb-48a9-ac83-de3fe3e51052 -o StrictHostKeyChecking=no"
       git clone ssh://aur@aur.archlinux.org/mailctl-bin.git
 
       cd mailctl/aur
