@@ -1,0 +1,5 @@
+packages: mailctl.cabal
+executable-stripping: True
+optimization: 2
+overwrite-policy: always
+install-method: copy
