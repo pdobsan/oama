@@ -1,0 +1,6 @@
+pipeline:
+  - name: build
+    image: haskell:9.4.4
+    commands:
+      - cabal update
+      - cabal build
