@@ -42,7 +42,7 @@ versionOption = do
   let verinfo =
         "mailctl version "
           <> showVersion version
-          <> "\nCopyright (C) Peter Dobsan 2022"
+          <> "\nCopyright (C) Peter Dobsan 2023"
   infoOption verinfo (long "version" <> help "Show version")
 
 programOptions :: Parser Opts
