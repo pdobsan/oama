@@ -1,6 +1,5 @@
-platform: linux/arm64/v8
 pipeline:
-  - name: build
+  build:
     image: haskell:9.4.4
     commands:
       - cabal update
