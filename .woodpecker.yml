@@ -1,6 +1,7 @@
+platform: linux/arm64/v8
 pipeline:
   - name: build
-    image: linux/arm64/v8/haskell:9.4.4
+    image: haskell:9.4.4
     commands:
       - cabal update
       - cabal freeze
