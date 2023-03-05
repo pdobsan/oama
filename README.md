@@ -1,6 +1,7 @@
 # mailctl
 
-[![builds.sr.ht status](https://builds.sr.ht/~petrus.svg?search=mailctl)](https://builds.sr.ht/~petrus?search=mailctl)
+[![CI status](https://ci.codeberg.org/api/badges/petrus/mailctl/status.svg)](https://ci.codeberg.org/petrus/foot)
+[![builds.sr.ht status](https://builds.sr.ht/~petrus/mailctl.svg)](https://builds.sr.ht/~petrus/mailctl?)
 [![Build](https://github.com/pdobsan/mailctl/actions/workflows/build.yaml/badge.svg)](https://github.com/pdobsan/mailctl/actions/workflows/build.yaml)
 
 
