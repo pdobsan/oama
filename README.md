@@ -1,6 +1,6 @@
 # mailctl
 
-[![builds.sr.ht status](https://builds.sr.ht/~petrus.svg)](https://builds.sr.ht/~petrus?)
+[![builds.sr.ht status](https://builds.sr.ht/~petrus.svg?search=mailctl)](https://builds.sr.ht/~petrus?search=mailctl)
 [![Build](https://github.com/pdobsan/mailctl/actions/workflows/build.yaml/badge.svg)](https://github.com/pdobsan/mailctl/actions/workflows/build.yaml)
 
 
