@@ -8,17 +8,9 @@ packages:
   - bash-completion
 secrets:
   - 044052f6-02ad-4a33-89d8-0f2114b04591
-  - 866ec1e0-300d-4f52-af8a-2df8c9e3eb7b
 sources:
   - https://git.sr.ht/~petrus/mailctl
 tasks:
-  - mirror: |
-      cd mailctl
-      set +x
-      export GIT_SSH_COMMAND="ssh -i ~/.ssh/866ec1e0-300d-4f52-af8a-2df8c9e3eb7b -o StrictHostKeyChecking=no"
-      set -x
-      git push --mirror git@github.com:pdobsan/mailctl
-
   - setup-buildenv: |
       cd mailctl
       version=$(awk '/^version:/ {print $2}' mailctl.cabal)
@@ -65,9 +57,6 @@ tasks:
       fi
 
   - aur: |
-      set +x
-      export GIT_SSH_COMMAND="ssh -i ~/.ssh/044052f6-02ad-4a33-89d8-0f2114b04591 -o StrictHostKeyChecking=no"
-      set -x
       git clone ssh://aur@aur.archlinux.org/mailctl-bin.git
 
       cd mailctl/aur
