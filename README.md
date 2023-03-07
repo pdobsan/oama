@@ -176,6 +176,14 @@ All transactions and exceptions are logged to `syslog`. If your OS using
     journalctl --identifier fdm --identifier mailctl --identifier msmtp -e
 
 
+## Issues
+
+Please, report any issues, questions, suggestions regarding `mailctl` at
+**Sourcehut** by sending a plain text email to
+<~petrus/mailctl-discuss@lists.sr.ht> There you can also browse the [mailctl
+mailing list](https://lists.sr.ht/~petrus/mailctl-discuss) No registration
+is necessary.
+
 ## Acknowledgment 
 
 The method of dealing with OAuth2 services was inspired by the
