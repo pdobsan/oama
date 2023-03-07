@@ -8,6 +8,8 @@ packages:
   - bash-completion
 secrets:
   - 044052f6-02ad-4a33-89d8-0f2114b04591
+environment:
+  - GIT_SSH_COMMAND: ssh -o StrictHostKeyChecking=no
 sources:
   - https://git.sr.ht/~petrus/mailctl
 tasks:
@@ -57,6 +59,7 @@ tasks:
       fi
 
   - aur: |
+      # export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -i ~/.ssh/<secret>"
       git clone ssh://aur@aur.archlinux.org/mailctl-bin.git
 
       cd mailctl/aur
