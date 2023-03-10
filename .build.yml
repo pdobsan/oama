@@ -64,7 +64,8 @@ tasks:
 
       cd mailctl/aur
       sed -i "s/^pkgver=.*/pkgver=$VERSION/" PKGBUILD
-      updpkgsums
+      # bail out if there is no release yet
+      updpkgsums || exit 0
       makepkg --printsrcinfo >.SRCINFO
       cp PKGBUILD .INSTALL .SRCINFO ~/mailctl-bin
 

@@ -186,7 +186,7 @@ You can also browse the [`mailctl` mailing lists](https://sr.ht/~petrus/mailctl/
 
 You might want to subscribe to some of them by emailing to
 `~user/list-name+subscribe@lists.sr.ht` or just clicking on the _Subscribe_
-link on the particular list's page. You can unsubscribe with +unsubscribe.
+link on the particular list's page. You can unsubscribe with `+unsubscribe`.
 
 
 ## Acknowledgment 
