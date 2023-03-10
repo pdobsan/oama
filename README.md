@@ -176,13 +176,18 @@ All transactions and exceptions are logged to `syslog`. If your OS using
     journalctl --identifier fdm --identifier mailctl --identifier msmtp -e
 
 
-## Issues
+## Issues, Contributing and Announcements
 
 Please, report any issues, questions, suggestions regarding `mailctl` at
 **Sourcehut** by sending a plain text email to
-<~petrus/mailctl-discuss@lists.sr.ht> There you can also browse the [mailctl
-mailing list](https://lists.sr.ht/~petrus/mailctl-discuss) No registration
-is necessary.
+<~petrus/mailctl-discuss@lists.sr.ht> No registration is necessary.
+
+You can also browse the [`mailctl` mailing lists](https://sr.ht/~petrus/mailctl/lists).
+
+You might want to subscribe to some of them by emailing to
+`~user/list-name+subscribe@lists.sr.ht` or just clicking on the _Subscribe_
+link on the particular list's page. You can unsubscribe with +unsubscribe.
+
 
 ## Acknowledgment 
 

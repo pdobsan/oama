@@ -20,7 +20,7 @@ import Data.ByteString.Lazy (fromStrict)
 import Data.ByteString.Lazy.UTF8 qualified as BLU
 import Data.ByteString.UTF8 qualified as BSU
 import Data.Map qualified as M
-import Data.Maybe (fromJust, fromMaybe)
+import Data.Maybe (fromJust, fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Text.Lazy.Encoding qualified as TLE
 import Data.Time.Clock
@@ -137,6 +137,7 @@ decodeParamsMode paramsMode = error $ "Invalid ParamsMode: " <> paramsMode
 
 sendRequest :: Environment -> String -> ParamsMode -> String -> [(String, Maybe String)] -> IO (Either String BSU.ByteString)
 sendRequest env httpMethod paramsMode url params = do
+  let params_ = filter (\ (_, y) -> isJust y) params
   case paramsMode of
     RequestBody -> do
       req <- parseRequest $ httpMethod ++ " " ++ url
@@ -153,7 +154,7 @@ sendRequest env httpMethod paramsMode url params = do
         else runPost req'
     RequestBodyForm -> do
       req <- parseRequest $ httpMethod ++ " " ++ url
-      let ps = [bimap BSU.fromString (BSU.fromString . fromJust) x | x <- params]
+      let ps = [bimap BSU.fromString (BSU.fromString . fromJust) x | x <- params_]
           req' = setRequestBodyURLEncoded ps req
       if optDebug $ options env
         then do
@@ -165,7 +166,7 @@ sendRequest env httpMethod paramsMode url params = do
         else runPost req'
     QueryString -> do
       req <- parseRequest $ httpMethod ++ " " ++ url
-      let ps = [bimap BSU.fromString (BSU.fromString <$>) x | x <- params]
+      let ps = [bimap BSU.fromString (BSU.fromString <$>) x | x <- params_]
           req' = setRequestQueryString ps req
       if optDebug $ options env
         then do
@@ -257,19 +258,16 @@ getAccessToken env serv authcode = do
           ("client_secret", serviceFieldLookup ss serv client_secret),
           ("code", Just authcode),
           ("grant_type", Just "authorization_code"),
+          ("tenant", serviceFieldLookup ss serv tenant),
           ("redirect_uri", serviceFieldLookup ss serv redirect_uri)
         ]
-      qs_ =
-        if serv == "microsoft"
-          then ("tenant", serviceFieldLookup ss serv tenant) : qs
-          else qs
   let httpMethod = fromMaybe "GET" $ serviceFieldLookup ss serv token_http_method
   case serviceFieldLookup ss serv token_endpoint of
     Nothing -> error "getAccessToken: missing token_endpoint field in Services."
     Just tokenEndpoint ->
       case serviceFieldLookup ss serv token_params_mode of
         Nothing -> error "getAccessToken: missing token_params_mode field in Services."
-        Just paramsMode -> fetchAuthRecord env httpMethod (decodeParamsMode paramsMode) tokenEndpoint qs_
+        Just paramsMode -> fetchAuthRecord env httpMethod (decodeParamsMode paramsMode) tokenEndpoint qs
 
 generateAuthPage :: Environment -> String -> EmailAddress -> IO (Either String BSU.ByteString)
 generateAuthPage env serv email_ = do
