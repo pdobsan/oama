@@ -180,7 +180,9 @@ All transactions and exceptions are logged to `syslog`. If your OS using
 
 Please, report any issues, questions, suggestions regarding `mailctl` at
 **Sourcehut** by sending a plain text email to
-<~petrus/mailctl-discuss@lists.sr.ht> No registration is necessary.
+<~petrus/mailctl-discuss@lists.sr.ht>. No registration is necessary but please
+read the [Mailing list etiquette](https://man.sr.ht/lists.sr.ht/etiquette.md)
+before posting.
 
 You can also browse the [`mailctl` mailing lists](https://sr.ht/~petrus/mailctl/lists).
 
