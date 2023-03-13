@@ -139,13 +139,6 @@ getPortFromURIStr (Just uri) = case parseURI uri of
     convert "" = defaultPORT
     convert ps = read (tail ps)
 
-readServices :: FilePath -> IO Services
-readServices pfile = do
-  (decodeFileEither pfile :: IO (Either ParseException Services))
-    >>= \case
-      Left err -> error $ prettyPrintParseException err
-      Right ps -> return ps
-
 loadEnvironment :: IO Environment
 loadEnvironment = do
   env <- mkEnvironment
@@ -158,21 +151,11 @@ mkEnvironment = do
   opts <- customExecParser (prefs showHelpOnEmpty) optsParser
   let cfgOption = optConfig opts
       configFile = if cfgOption == "" then configDir <> "/config.yaml" else cfgOption
-  configExists <- D.doesFileExist configFile
-  if configExists
-    then do
-      (decodeFileEither configFile :: IO (Either ParseException Configuration))
-        >>= \case
-          Left err -> error $ prettyPrintParseException err
-          Right cfg' ->
-            ( Environment cfg'
-                <$> (SystemState <$> getCrontab <*> return False)
-                <*> readServices (services_file cfg')
-            )
-              <*> customExecParser (prefs showHelpOnEmpty) optsParser
-    else do
-      putStrLn $ "Can't find configuration file: " <> configFile
-      exitFailure
+  cfg <- readConfig configFile
+  Environment cfg
+    <$> (SystemState <$> getCrontab <*> return False)
+    <*> readServices (services_file cfg)
+    <*> customExecParser (prefs showHelpOnEmpty) optsParser
 
 getCrontab :: IO (Maybe String)
 getCrontab = do
@@ -199,3 +182,38 @@ isCronEnabled env = do
   case env.config.cron_indicator of
     Just cronflag -> D.doesFileExist cronflag
     Nothing -> return False
+
+isFileReadable :: FilePath -> IO Bool
+isFileReadable file = do
+  D.doesFileExist file
+  >>= \case
+    True -> do
+      perms <- D.getPermissions file
+      return $ D.readable perms
+    False -> return False
+
+readConfig :: FilePath -> IO Configuration
+readConfig configFile = do
+  readable <- isFileReadable configFile
+  if readable
+    then
+      (decodeFileEither configFile :: IO (Either ParseException Configuration))
+        >>= \case
+          Left err -> error $ prettyPrintParseException err
+          Right cfg -> return cfg
+    else do
+      putStrLn $ "Can't find/read configuration file: " <> configFile
+      exitFailure
+
+readServices :: FilePath -> IO Services
+readServices servicesFile = do
+  readable <- isFileReadable servicesFile
+  if readable
+    then
+      (decodeFileEither servicesFile :: IO (Either ParseException Services))
+        >>= \case
+          Left err -> error $ prettyPrintParseException err
+          Right ps -> return ps
+    else do
+      putStrLn $ "Can't find/read services file: " <> servicesFile
+      exitFailure
