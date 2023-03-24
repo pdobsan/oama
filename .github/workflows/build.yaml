@@ -14,9 +14,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ghc: ['9.2.6', '9.4.4']
-        cabal: [3.8.1.0]
-        os: [ubuntu-22.04]
+        ghc: ['9.2.7', '9.4.4']
+        cabal: [3.10.1.0]
+        os: [ubuntu-latest]
     name: Haskell GHC ${{ matrix.ghc }}
 
     steps:

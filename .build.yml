@@ -27,8 +27,8 @@ tasks:
       mkdir -p .cabal/bin
       ghcup install ghc 9.4.4
       ghcup set ghc 9.4.4
-      ghcup install cabal 3.8.1.0
-      ghcup set cabal 3.8.1.0
+      ghcup install cabal 3.10.1.0
+      ghcup set cabal 3.10.1.0
       ghcup list -c set
       cabal update
 
