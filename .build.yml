@@ -6,6 +6,10 @@ packages:
   - hut
   - pacman-contrib
   - bash-completion
+triggers:
+  - action: email
+    condition: always
+    to: Petrus <petrus@dismail.de>
 secrets:
   - 044052f6-02ad-4a33-89d8-0f2114b04591
 environment:
