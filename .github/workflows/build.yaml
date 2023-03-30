@@ -43,6 +43,7 @@ jobs:
         run: |
           cabal configure --enable-tests --disable-documentation --enable-executable-stripping 
           cabal build --dry-run
+          cabal freeze
         # The last step generates dist-newstyle/cache/plan.json for the cache key.
 
       - name: Restore cached dependencies
@@ -75,7 +76,7 @@ jobs:
           ~/.cabal/bin/mailctl --version
           mkdir artifacts
           mv ~/.cabal/bin/mailctl artifacts/mailctl-$(git describe)
-          mv cabal.freeze artifacts
+          mv cabal.project.freeze artifacts
 
       - name: Upload
         uses: actions/upload-artifact@v3
