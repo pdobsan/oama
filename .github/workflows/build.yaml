@@ -71,7 +71,8 @@ jobs:
         run: |
           cabal build
           cabal install --install-method copy --overwrite-policy always
-          ~/.cabal/bin/mailctl
+          ~/.cabal/bin/mailctl -h
+          ~/.cabal/bin/mailctl --version
           mkdir artifacts
           mv ~/.cabal/bin/mailctl artifacts/mailctl-$(git describe)
           mv cabal.freeze artifacts
