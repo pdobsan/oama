@@ -71,11 +71,14 @@ jobs:
         run: |
           cabal build
           cabal install --install-method copy --overwrite-policy always
+          ~/.cabal/bin/mailctl
+          mkdir artifacts
+          mv ~/.cabal/bin/mailctl artifacts/mailctl-$(git describe)
+          mv cabal.freeze artifacts
 
       - name: Upload
         uses: actions/upload-artifact@v3
         if: success()
         with:
-          path: |
-            ~/.cabal/bin/mailctl
-            cabal.freeze
+          name: ${{ runner.os }}-ghc-${{ env.GHC_VERSION }} 
+          path: artifacts
