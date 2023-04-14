@@ -7,7 +7,7 @@ on:
     branches: [main, master]
   schedule:
     # run weekly to keep the cache fresh
-    - cron: 59 23 * * Friday
+    - cron: 59 23 * * 5
 
 permissions:
   contents: read
