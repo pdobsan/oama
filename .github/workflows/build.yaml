@@ -6,8 +6,8 @@ on:
   pull_request:
     branches: [main, master]
   schedule:
-    # run every Sunday to keep the cache fresh
-    - cron: 0 * * * 0
+    # run weekly to keep the cache fresh
+    - cron: 59 23 * * Friday
 
 permissions:
   contents: read
