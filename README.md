@@ -94,11 +94,28 @@ Shell completion for `bash`, `zsh` and `fish` shells are provided.
 ### Authorization for Organizational/Institutional accounts
 
 The authorization process of Organizational/Institutional accounts can
-slightly be different from of individual accounts That is definitively the
-case for Google. When you want authorize such an account invoke `mailctl`
-like this:
+slightly be different from of individual accounts.
 
-    mailctl authorize <service> <email> --company
+#### Google Organizational Account
+
+When you want to authorize such an account invoke `mailctl` like this:
+
+    mailctl authorize google <you@company.email> --company
+
+#### Microsoft Organizational Account
+
+Invoke `mailctl` using your proper organizational email:
+
+    mailctl authorize microsoft <you@company.email>
+
+Then visit the `http://localhost:8080/start` page to perform the steps
+below:
+
+ - Click "Sign in with another account"
+ - Click "Sign-in options"
+ - Click "Sign in to an organization"
+ - Put in the correct domain name which matches your organization address above
+ - Log in with your credentials at the organization.
 
 ## Configuration
 
