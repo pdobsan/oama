@@ -29,8 +29,8 @@ tasks:
 
   - setup-ghc: |
       mkdir -p .cabal/bin
-      ghcup install ghc 9.4.4
-      ghcup set ghc 9.4.4
+      ghcup install ghc 9.6.1
+      ghcup set ghc 9.6.1
       ghcup install cabal 3.10.1.0
       ghcup set cabal 3.10.1.0
       ghcup list -c set
