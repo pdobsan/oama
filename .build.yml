@@ -21,9 +21,13 @@ tasks:
       cd mailctl
       version=$(awk '/^version:/ {print $2}' mailctl.cabal)
       tag=$(git describe --exact-match 2>/dev/null || echo none)
+      kernel=$(uname -s)
+      machine=$(uname -m)
       cd
       echo "export VERSION=$version" >> .buildenv
       echo "export TAG=$tag" >> .buildenv
+      echo "export KERNEL=$kernel" >> .buildenv
+      echo "export MACHINE=$machine" >> .buildenv
       echo 'export PATH=~/.ghcup/bin:~/.cabal/bin:~/.local/bin:$PATH' >> .buildenv
       echo 'alias ls="ls --color=auto -alF --group-directories-first"' >> .buildenv
 
@@ -40,7 +44,7 @@ tasks:
       cd mailctl
       cabal freeze
       cabal build
-      cabal install --install-method copy --overwrite-policy always
+      cabal install --install-method copy --overwrite-policy always --enable-executable-stripping
 
   - test: |
       mkdir -p ~/.local/var/mailctl ~/.config/mailctl
@@ -48,9 +52,9 @@ tasks:
       mailctl --version
 
   - release: |
-      reldir="mailctl-$VERSION"
+      reldir="mailctl-$VERSION-$KERNEL-$MACHINE"
       mkdir $reldir
-      cp ~/.cabal/bin/mailctl $reldir/$reldir-$(uname -s)-$(uname -m)
+      cp ~/.cabal/bin/mailctl $reldir/$reldir
       cp mailctl/{LICENSE,README.md} $reldir
       cp -r mailctl/configs $reldir
       cp -r mailctl/completions $reldir
