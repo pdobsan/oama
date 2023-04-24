@@ -162,6 +162,9 @@ Each release contains a compiled static executable of `mailctl` which should
 work on most Linux distributions. Select the version you want to download from
 [sourcehut](https://git.sr.ht/~petrus/mailctl/refs), click on the version link
 and download the tar file containing the compiled executable from that page.
+The same pre-compiled packages are also available from
+[github](https://github.com/pdobsan/mailctl/releases).
+Currently Linux/x86_64 and Linux/aarch64(arm64) binaries are provided.
 
 #### Archlinux
 
