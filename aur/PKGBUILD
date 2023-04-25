@@ -5,7 +5,7 @@ _pkgname="${pkgname%-bin}"
 pkgver=0.0.0
 pkgrel=1
 pkgdesc="Provide OAuth2 renewal and authorization capabilities"
-arch=('x86_64' 'aarch64')
+arch=(x86_64 aarch64)
 url="https://sr.ht/~petrus/${_pkgname}"
 #url="https://github.com/pdobsan/${_pkgname}"
 license=('BSD')
@@ -21,15 +21,17 @@ optdepends=(
            )
 provides=(${_pkgname})
 conflicts=(${_pkgname} ${_pkgname}-git)
-release=$_pkgname-$pkgver-Linux-$CARCH
-source=(https://git.sr.ht/~petrus/mailctl/refs/download/${pkgver}/$release.tgz)
-sha256sums=(SKIP)
+release=$_pkgname-$pkgver-Linux
+source_x86_64=(https://git.sr.ht/~petrus/mailctl/refs/download/${pkgver}/$release-x86_64.tgz)
+source_aarch64=(https://git.sr.ht/~petrus/mailctl/refs/download/${pkgver}/$release-aarch64.tgz)
+sha256sums_x86_64=(SKIP)
+sha256sums_aarch64=(SKIP)
 
 install=.INSTALL
 
 package() {
-  cd $release
-  install -Dm755 ${release} ${pkgdir}/usr/bin/${_pkgname}
+  cd $release-$CARCH
+  install -Dm755 ${_pkgname} ${pkgdir}/usr/bin/${_pkgname}
 
   install -Dm644 LICENSE ${pkgdir}/usr/share/${_pkgname}/LICENSE
   install -Dm644 README.md ${pkgdir}/usr/share/${_pkgname}

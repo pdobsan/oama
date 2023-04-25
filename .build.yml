@@ -54,7 +54,7 @@ tasks:
   - release: |
       reldir="mailctl-$VERSION-$KERNEL-$MACHINE"
       mkdir $reldir
-      cp ~/.cabal/bin/mailctl $reldir/$reldir
+      cp ~/.cabal/bin/mailctl $reldir
       cp mailctl/{LICENSE,README.md} $reldir
       cp -r mailctl/configs $reldir
       cp -r mailctl/completions $reldir
