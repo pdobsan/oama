@@ -21,15 +21,15 @@ optdepends=(
            )
 provides=(${_pkgname})
 conflicts=(${_pkgname} ${_pkgname}-git)
-srcdir=$_pkgname-$pkgver-Linux-$CARCH
-source=(https://git.sr.ht/~petrus/mailctl/refs/download/${pkgver}/$srcdir.tgz)
+release=$_pkgname-$pkgver-Linux-$CARCH
+source=(https://git.sr.ht/~petrus/mailctl/refs/download/${pkgver}/$release.tgz)
 sha256sums=(SKIP)
 
 install=.INSTALL
 
 package() {
-  cd $srcdir
-  install -Dm755 ${srcdir} ${pkgdir}/usr/bin/${_pkgname}
+  cd $release
+  install -Dm755 ${release} ${pkgdir}/usr/bin/${_pkgname}
 
   install -Dm644 LICENSE ${pkgdir}/usr/share/${_pkgname}/LICENSE
   install -Dm644 README.md ${pkgdir}/usr/share/${_pkgname}

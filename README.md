@@ -29,9 +29,6 @@ If you are using `fdm` with no complex desktop system you might also be
 interested in my [mailnotify](https://github.com/pdobsan/mailnotify) program
 which generates pop-up notifications about incoming email messages.
 
-`mailctl` has been successfully used with Google/Gmail, operation with other
-Oauth2 service providers are planned.
-
 ## Usage
 
 Before `mailctl` is fully operational you need to create the necessary
@@ -158,7 +155,7 @@ like `gnome-keyring` might be used.
 
 ### Compiled static binaries
 
-Each release contains a compiled static executable of `mailctl` which should
+Each release contains compiled static executables of `mailctl` which should
 work on most Linux distributions. Select the version you want to download from
 [sourcehut](https://git.sr.ht/~petrus/mailctl/refs), click on the version link
 and download the tar file containing the compiled executable from that page.
@@ -174,7 +171,7 @@ For Archlinux users there is also a package on AUR:
 ### Building from sources
 
 To build `mailctl` from source you need a Haskell development environment,
-with `ghc 9.2.4` or higher. Either your platform package system can provide
+with `ghc 9.2.4` or higher. Either your platform's package system can provide
 this or you can use [ghcup](https://www.haskell.org/ghcup/). Once you have
 the `ghc` Haskell compiler and `cabal` etc. installed, follow the steps
 below:
