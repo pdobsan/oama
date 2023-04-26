@@ -383,10 +383,14 @@ authorizeEmail env servName email_ company = do
           putStrLn $ "To grant OAuth2 access to " ++ unEmailAddress email_ ++ " visit the local URL below with your browser."
           putStrLn $ redirect ++ "/start"
       mvar <- newEmptyMVar
-      _ <-
-        if company
-          then forkIO $ localWebServer mvar env serv (EmailAddress "company-mail")
-          else forkIO $ localWebServer mvar env serv email_
+      let email' = if company
+                      -- assuming that the above keys are used in services.yaml !!!
+                      then case servName of
+                        "google" -> EmailAddress "dummy-email-address"
+                        "microsoft" -> email_
+                        _ -> error $ "authorizeEmail: don't know how to deal with '" ++ servName ++ "' company email.\nYou may try it without the --company flag."
+                      else email_
+      _ <- forkIO $ localWebServer mvar env serv email'
       printf "Authorization started ... \n"
       takeMVar mvar
         >>= \case
