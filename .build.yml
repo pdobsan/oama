@@ -6,6 +6,9 @@ packages:
   - hut
   - pacman-contrib
   - bash-completion
+  - helix
+  - bash-language-server
+  - upx
 triggers:
   - action: email
     condition: always
@@ -52,8 +55,9 @@ tasks:
 
   - release: |
       reldir="mailctl-$VERSION-$KERNEL-$MACHINE"
-      mkdir $reldir
-      install -s $(cabal list-bin mailctl) $reldir
+      mkdir -p $reldir
+      install -s $(cd mailctl; cabal list-bin mailctl) $reldir
+      upx $reldir/mailctl
       cp mailctl/{LICENSE,README.md} $reldir
       cp -r mailctl/configs $reldir
       cp -r mailctl/completions $reldir
