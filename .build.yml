@@ -46,6 +46,7 @@ tasks:
 
   - test: |
       mkdir -p ~/.local/var/mailctl ~/.config/mailctl
+      cd mailctl
       cabal run mailctl -- -h
       cabal run mailctl -- --version
 
