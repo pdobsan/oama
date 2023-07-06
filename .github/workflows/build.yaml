@@ -76,11 +76,10 @@ jobs:
       - name: Build
         run: |
           cabal build
-          cabal install --install-method copy --overwrite-policy always
-          ~/.cabal/bin/mailctl -h
-          ~/.cabal/bin/mailctl --version
+          cabal run mailctl -- -h
+          cabal run mailctl -- --version
           mkdir artifacts
-          mv ~/.cabal/bin/mailctl artifacts/mailctl-$(git describe)
+          install -s $(cabal list-bin mailctl) artifacts/mailctl-$(git describe)
           mv cabal.project.freeze artifacts
 
       - name: Upload

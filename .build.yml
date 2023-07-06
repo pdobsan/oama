@@ -32,9 +32,8 @@ tasks:
       echo 'alias ls="ls --color=auto -alF --group-directories-first"' >> .buildenv
 
   - setup-ghc: |
-      mkdir -p .cabal/bin
-      ghcup install ghc 9.6.1
-      ghcup set ghc 9.6.1
+      ghcup install ghc 9.6.2
+      ghcup set ghc 9.6.2
       ghcup install cabal 3.10.1.0
       ghcup set cabal 3.10.1.0
       ghcup list -c set
@@ -44,17 +43,16 @@ tasks:
       cd mailctl
       cabal freeze
       cabal build
-      cabal install --install-method copy --overwrite-policy always --enable-executable-stripping
 
   - test: |
       mkdir -p ~/.local/var/mailctl ~/.config/mailctl
-      mailctl -h
-      mailctl --version
+      cabal run mailctl -- -h
+      cabal run mailctl -- --version
 
   - release: |
       reldir="mailctl-$VERSION-$KERNEL-$MACHINE"
       mkdir $reldir
-      cp ~/.cabal/bin/mailctl $reldir
+      install -s $(cabal list-bin mailctl) $reldir
       cp mailctl/{LICENSE,README.md} $reldir
       cp -r mailctl/configs $reldir
       cp -r mailctl/completions $reldir
