@@ -1,0 +1,16 @@
+matrix:
+  platform:
+    - 'linux/amd64'
+    - 'linux/arm64v8'
+
+platform: ${platform}
+pipeline:
+  build:
+    image: haskell:latest
+    commands:
+      - uname -a || true
+      - cabal update
+      - cabal freeze
+      - cabal build
+      - cabal run mailctl -- --version
+      - ldd $(cabal list-bin mailctl) || true
