@@ -1,8 +1,7 @@
 # mailctl
 
-[![CI status](https://ci.codeberg.org/api/badges/petrus/mailctl/status.svg)](https://ci.codeberg.org/petrus/mailctl)
-[![builds.sr.ht status](https://builds.sr.ht/~petrus/mailctl.svg)](https://builds.sr.ht/~petrus/mailctl?)
 [![Build](https://github.com/pdobsan/mailctl/actions/workflows/build.yaml/badge.svg)](https://github.com/pdobsan/mailctl/actions/workflows/build.yaml)
+[![builds.sr.ht status](https://builds.sr.ht/~petrus/mailctl.svg)](https://builds.sr.ht/~petrus/mailctl?)
 
 
 `mailctl` provides IMAP/SMTP clients with the capabilities of renewal and

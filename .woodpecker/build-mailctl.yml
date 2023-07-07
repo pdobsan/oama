@@ -1,7 +1,7 @@
 matrix:
   platform:
     - 'linux/amd64'
-    - 'linux/arm64v8'
+    - 'linux/arm64'
 
 platform: ${platform}
 pipeline:
