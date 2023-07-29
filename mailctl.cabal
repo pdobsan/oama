@@ -11,8 +11,7 @@ data-files:
 common common
   default-language: Haskell2010
   build-depends:
-    -- see https://github.com/snoyberg/yaml/issues/219
-    aeson < 2.2,
+    aeson,
     base >=4.16,
     bytestring,
     containers,
@@ -23,6 +22,7 @@ common common
     optparse-applicative,
     pretty-simple,
     process,
+    strings,
     template-haskell,
     text,
     time,
