@@ -2,11 +2,13 @@
 # capabilities of renewal and authorization of OAuth2 credentials. 
 # Accordingly only the OAuth2 related config entries are mandatory.
 
-# These four entries should be use for OAuth2 access method
-services_file: /YOUR-HOME-DIRECTORY/.config/mailctl/services.yaml
-oauth2_dir: /YOUR-HOME-DIRECTORY/.local/var/mailctl
+# Any path can be absolute or rooted to your home directory using ~/
+
+# These four entries are used for OAuth2 access method
+services_file: ~/.config/mailctl/services.yaml
+oauth2_dir: ~/.local/var/mailctl
 # This encryption method using gnupg.
-# Alternatives like gnome-keyring can also be configured here.
+# Alternatives like age can also be configured here.
 encrypt_cmd:
   exec: gpg
   args:
@@ -20,15 +22,15 @@ decrypt_cmd:
     - --decrypt
 
 # Only if you are using fdm
-fdm_config: /YOUR-HOME-DIRECTORY/.config/fdm/fdm.conf
-fdm_accounts: /YOUR-HOME-DIRECTORY/.config/fdm/accounts.conf
+fdm_config: ~/.config/fdm/fdm.conf
+fdm_accounts: ~/.config/fdm/accounts.conf
 
 # Only if you are running mailctl directly by cron
-cron_indicator: /YOUR-HOME-DIRECTORY/.local/var/mailctl/fdm-cron-enabled
+cron_indicator: ~/.local/var/mailctl/fdm-cron-enabled
 
 # Only if you are using a password manager for traditional access methods
 # This is an example of using `pass`
-password_store: /YOUR-HOME-DIRECTORY/.local/var/password-store
+password_store: ~/.local/var/password-store
 pass_cmd:
   exec: pass
   args:

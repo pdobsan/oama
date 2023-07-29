@@ -22,21 +22,23 @@ module MailCtl.Environment (
 ) where
 
 import Data.Map (Map)
-import Data.Map qualified as M
-import Data.Text qualified as T
+import Data.Map qualified as Map
+import Data.Strings (strStartsWith, strDrop)
+import Data.Text qualified as Text
 import Data.Time.Clock
-import Data.Yaml
+import Data.Yaml qualified as Yaml
 import GHC.Generics
 import MailCtl.CommandLine
 import Network.URI
 import Options.Applicative (customExecParser, prefs, showHelpOnEmpty)
-import System.Directory qualified as D
+import System.Directory qualified as Dir
+import System.Environment (getEnv)
 import System.Exit (ExitCode (ExitSuccess), exitFailure)
-import System.Process qualified as P
+import System.Process qualified as Proc
 import Text.Printf
 
 newtype EmailAddress = EmailAddress {unEmailAddress :: String}
-  deriving (Show, Generic, ToJSON, FromJSON)
+  deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
 data AuthRecord = AuthRecord
   { access_token :: String,
@@ -48,13 +50,13 @@ data AuthRecord = AuthRecord
     email :: Maybe EmailAddress,
     service :: Maybe String
   }
-  deriving (Show, Generic, ToJSON, FromJSON)
+  deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
 data Program = Program
   { exec :: FilePath,
     args :: [String]
   }
-  deriving (Show, Generic, ToJSON, FromJSON)
+  deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
 data Configuration = Configuration
   { services_file :: FilePath,
@@ -67,13 +69,13 @@ data Configuration = Configuration
     password_store :: Maybe FilePath,
     pass_cmd :: Maybe Program
   }
-  deriving (Show, Generic, ToJSON, FromJSON)
+  deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
 data SystemState = SystemState
   { crontab :: Maybe String,
     cron_enabled :: Bool
   }
-  deriving (Show, Generic, ToJSON)
+  deriving (Show, Generic, Yaml.ToJSON)
 
 data ParamsMode = RequestBody | RequestBodyForm | QueryString
 data HTTPMethod = POST | GET
@@ -91,7 +93,7 @@ data Service = Service
     client_id :: Maybe String,
     client_secret :: Maybe String
   }
-  deriving (Show, Generic, ToJSON, FromJSON)
+  deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
 type Services = Map String Service
 
@@ -107,7 +109,7 @@ defaultPORT :: Int
 defaultPORT = 8080
 
 serviceFieldLookup :: Services -> String -> (Service -> Maybe String) -> Maybe String
-serviceFieldLookup services_ servName field = M.lookup servName services_ >>= field
+serviceFieldLookup services_ servName field = Map.lookup servName services_ >>= field
 
 {-
 printURI :: String -> IO ()
@@ -147,30 +149,48 @@ loadEnvironment = do
 
 mkEnvironment :: IO Environment
 mkEnvironment = do
-  configDir <- D.getXdgDirectory D.XdgConfig "mailctl"
+  configDir <- Dir.getXdgDirectory Dir.XdgConfig "mailctl"
   opts <- customExecParser (prefs showHelpOnEmpty) optsParser
   let cfgOption = optConfig opts
       configFile = if cfgOption == "" then configDir <> "/config.yaml" else cfgOption
   cfg <- readConfig configFile
-  Environment cfg
+  hd <- getEnv "HOME"
+  let cfg' = cfg{ services_file = expandTilde cfg.services_file hd,
+                  oauth2_dir = expandTilde cfg.oauth2_dir hd,
+                  fdm_config = expandTilde_ cfg.fdm_config hd,
+                  fdm_accounts = expandTilde_ cfg.fdm_accounts hd,
+                  cron_indicator = expandTilde_ cfg.cron_indicator hd,
+                  password_store = expandTilde_ cfg.password_store hd
+                }
+  Environment cfg'
     <$> (SystemState <$> getCrontab <*> return False)
-    <*> readServices (services_file cfg)
+    <*> readServices cfg'.services_file
     <*> customExecParser (prefs showHelpOnEmpty) optsParser
+
+expandTilde :: FilePath -> FilePath -> FilePath
+expandTilde cpath homeDir =
+  if strStartsWith cpath "~"
+    then homeDir <> (strDrop 1 cpath)
+    else cpath
+
+expandTilde_ :: Maybe FilePath -> FilePath -> Maybe FilePath
+expandTilde_ (Just cpath) homeDir = Just $ expandTilde cpath homeDir
+expandTilde_ Nothing _ = Nothing
 
 getCrontab :: IO (Maybe String)
 getCrontab = do
-  cronExists <- D.doesFileExist "/usr/bin/crontab"
+  cronExists <- Dir.doesFileExist "/usr/bin/crontab"
   if cronExists
     then do
-      (x, o, e) <- P.readProcessWithExitCode "crontab" ["-l"] ""
+      (x, o, e) <- Proc.readProcessWithExitCode "crontab" ["-l"] ""
       if x == ExitSuccess
         then do
-          let xs = T.lines $ T.pack o
-              ys = [y | y <- xs, T.isInfixOf "mailctl" y]
-              z = T.concat ys
-          return $ Just $ T.unpack z
+          let xs = Text.lines $ Text.pack o
+              ys = [y | y <- xs, Text.isInfixOf "mailctl" y]
+              z = Text.concat ys
+          return $ Just $ Text.unpack z
         else do
-          if not (T.isInfixOf "no crontab for" (T.pack e))
+          if not (Text.isInfixOf "no crontab for" (Text.pack e))
             then do
               putStr e
               return Nothing
@@ -180,16 +200,16 @@ getCrontab = do
 isCronEnabled :: Environment -> IO Bool
 isCronEnabled env = do
   case env.config.cron_indicator of
-    Just cronflag -> D.doesFileExist cronflag
+    Just cronflag -> Dir.doesFileExist cronflag
     Nothing -> return False
 
 isFileReadable :: FilePath -> IO Bool
 isFileReadable file = do
-  D.doesFileExist file
+  Dir.doesFileExist file
   >>= \case
     True -> do
-      perms <- D.getPermissions file
-      return $ D.readable perms
+      perms <- Dir.getPermissions file
+      return $ Dir.readable perms
     False -> return False
 
 readConfig :: FilePath -> IO Configuration
@@ -197,9 +217,9 @@ readConfig configFile = do
   readable <- isFileReadable configFile
   if readable
     then
-      (decodeFileEither configFile :: IO (Either ParseException Configuration))
+      (Yaml.decodeFileEither configFile :: IO (Either Yaml.ParseException Configuration))
         >>= \case
-          Left err -> error $ prettyPrintParseException err
+          Left err -> error $ Yaml.prettyPrintParseException err
           Right cfg -> return cfg
     else do
       putStrLn $ "Can't find/read configuration file: " <> configFile
@@ -210,9 +230,9 @@ readServices servicesFile = do
   readable <- isFileReadable servicesFile
   if readable
     then
-      (decodeFileEither servicesFile :: IO (Either ParseException Services))
+      (Yaml.decodeFileEither servicesFile :: IO (Either Yaml.ParseException Services))
         >>= \case
-          Left err -> error $ prettyPrintParseException err
+          Left err -> error $ Yaml.prettyPrintParseException err
           Right ps -> return ps
     else do
       putStrLn $ "Can't find/read services file: " <> servicesFile
