@@ -20,7 +20,7 @@ import Data.ByteString.Lazy (fromStrict)
 import Data.ByteString.Lazy.UTF8 qualified as BLU
 import Data.ByteString.UTF8 qualified as BSU
 import Data.Map qualified as M
-import Data.Maybe (fromJust, fromMaybe, isJust)
+import Data.Maybe (fromJust, fromMaybe, isJust, isNothing)
 import Data.Text (Text)
 import Data.Text.Lazy.Encoding qualified as TLE
 import Data.Time.Clock
@@ -45,8 +45,8 @@ import Web.Twain qualified as TW
 -- https://developers.google.com/identity/protocols/oauth2/native-app
 -- https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow
 --
--- The managed credentials are kept in either in gnome keyring
--- or in gpg encrypted files.
+-- The managed credentials are kept in either in Gnome keyring
+-- or in GPG encrypted files. Only one of these methods can be used.
 
 getAR :: Maybe Program -> Maybe Program -> Maybe FilePath -> EmailAddress -> IO AuthRecord
 getAR (Just ring_lookup_) Nothing Nothing email_ = do
@@ -93,7 +93,7 @@ putAR (Just ring_store_) Nothing Nothing email_ rec = do
   (Just h, _, _, p) <-
     P.createProcess
       (P.proc ring_store_.exec (ring_store_.args ++ ["mailctl " ++ m, "mailctl", m]))
-      { P.std_in = P.CreatePipe }
+      {P.std_in = P.CreatePipe}
   IO.hPutStr h jsrec
   IO.hFlush h
   IO.hClose h
@@ -107,12 +107,8 @@ putAR Nothing (Just encrypt_cmd_) (Just oauth2_dir_) email_ rec = do
       jsrec = BLU.toString $ encode rec
   (Just h, _, _, p) <-
     P.createProcess
-      ( P.proc
-          encrypt_cmd_.exec
-          (encrypt_cmd_.args <> [gpgFile <> ".new"])
-      )
-        { P.std_in = P.CreatePipe
-        }
+      (P.proc encrypt_cmd_.exec (encrypt_cmd_.args <> [gpgFile <> ".new"]))
+      {P.std_in = P.CreatePipe}
   IO.hPutStr h jsrec
   IO.hFlush h
   IO.hClose h
@@ -125,7 +121,7 @@ putAR _ _ _ _ _ = error "putAR: bummer!"
 
 putAuthRecord :: Environment -> EmailAddress -> AuthRecord -> IO ()
 putAuthRecord env email_ rec = do
-  putAR env.config.ring_lookup env.config.encrypt_cmd env.config.oauth2_dir email_ rec
+  putAR env.config.ring_store env.config.encrypt_cmd env.config.oauth2_dir email_ rec
 
 timeStampFormat :: String
 timeStampFormat = "%Y-%m-%d %H:%M %Z"
@@ -359,12 +355,10 @@ localWebServer mvar env serv email_ = do
                       TW.html $
                         BLU.fromString $
                           printf "<h4>Received new refresh and access tokens for %s</h4>" (unEmailAddress email_)
-                          {--
-                            <> printf
-                              "<p>They have been saved encrypted in <kbd>%s/%s.auth</kbd></p>"
-                              (oauth2_dir (config env))
-                              (unEmailAddress email_)
-                          --}
+                          <>
+                          if isNothing env.config.oauth2_dir
+                            then printf "<p>They have been stored in the Gome keyring.</p>"
+                            else printf "<p>They have been saved in encrypted file.</p>"
 
             casService :: TW.ResponderM a
             casService = do

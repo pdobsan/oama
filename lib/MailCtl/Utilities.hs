@@ -73,11 +73,15 @@ listAccounts :: String -> IO ()
 listAccounts fdm_accounts_path = do
   xs <- TIO.readFile fdm_accounts_path
   let ys = T.lines xs
-      zs = [extract y | y <- ys, T.isPrefixOf "account" y]
+      zs = [extract y | y <- ys, T.isPrefixOf "account " y]
       z = T.intercalate "\n" zs
       extract ls =
         let ws = T.splitOn "\"" ls
-            (_ : a : _) = ws
+            a = case ws of
+                  (_ : x : _) -> x
+                  [] -> "No accounts!"
+                  [_] -> "Syntax error in fdm config?"
+
          in a
   TIO.putStrLn "List of accounts fetched:"
   TIO.putStrLn z
@@ -148,4 +152,4 @@ randstr base len = do
   return [ base !! x | x <- xs ]
 
 mkCodeVerifier :: Int -> IO String
-mkCodeVerifier len = randstr unreservedCharacters len
+mkCodeVerifier = randstr unreservedCharacters

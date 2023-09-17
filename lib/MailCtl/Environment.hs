@@ -175,7 +175,7 @@ mkEnvironment = do
 expandTilde :: FilePath -> FilePath -> FilePath
 expandTilde cpath homeDir =
   if strStartsWith cpath "~"
-    then homeDir <> (strDrop 1 cpath)
+    then homeDir <> strDrop 1 cpath
     else cpath
 
 expandTilde_ :: Maybe FilePath -> FilePath -> Maybe FilePath

@@ -7,6 +7,9 @@
 `mailctl` provides IMAP/SMTP clients with the capabilities of renewal and
 authorization of OAuth2 credentials.
 
+The Oauth2 credentials are kept in **the Gnome keyring** or
+in [GNU PG](https://www.gnupg.org/) **encrypted files**.
+
 Many IMAP/SMTP clients, like [msmtp](https://marlam.de/msmtp/),
 [fdm](https://github.com/nicm/fdm),
 [isync](http://isync.sourceforge.net/),
@@ -139,10 +142,6 @@ If you encounter difficulties during *authorization* or *renewal* try to use
 the `--debug` switch which causes `mailctl` to mirror print HTTP traffic to
 `stdout`.
 
-The Oauth2 credentials are kept encrypted using [GNU PG](https://www.gnupg.org/).
-so it is assumed that an authorized `gpg-agent` is running. Alternatives
-like `gnome-keyring` might be used.
-
 `fdm`, if used, can be run by `cron` with a `crontab` like this:
 
     PATH  = /YOUR_HOME_DIRECTORY/.cabal/bin:/usr/bin:/bin
@@ -209,7 +208,8 @@ link on the particular list's page. You can unsubscribe with `+unsubscribe`.
 
 ## Acknowledgment 
 
-The method of dealing with OAuth2 services was inspired by the
+The method of dealing with OAuth2 services, in particular keeping them in
+GnuPG encrypted files was inspired by the
 [mutt_oauth2.py](https://gitlab.com/muttmua/mutt/-/blob/master/contrib/mutt_oauth2.py)
 Python script written by Alexander Perlis.
 

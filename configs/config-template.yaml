@@ -2,13 +2,35 @@
 # capabilities of renewal and authorization of OAuth2 credentials. 
 # Accordingly only the OAuth2 related config entries are mandatory.
 
-# Any path can be absolute or rooted to your home directory using ~/
+# Any path can be absolute or rooted to the home directory 
+# using tilde expansion (~/...)
 
-# These four entries are used for OAuth2 access method
 services_file: ~/.config/mailctl/services.yaml
+
+# OAuth2 credentials are kept in the Gnome keyring or
+# in GPG encrypted files
+#
+# Only one of these methods can be used!!!
+# Delete what you don't use.
+
+# Storing OAuth credentials in the Gnome keyring
+# +
+ring_store:
+  exec: secret-tool
+  args:
+    - store
+    - --label
+
+ring_lookup:
+  exec: secret-tool
+  args:
+    - lookup
+    - mailctl
+# -
+
+# Saving OAuth2 credentials in files encrypted by GPG
+# +
 oauth2_dir: ~/.local/var/mailctl
-# This encryption method using gnupg.
-# Alternatives like age can also be configured here.
 encrypt_cmd:
   exec: gpg
   args:
@@ -20,6 +42,7 @@ decrypt_cmd:
   exec: gpg
   args:
     - --decrypt
+# -
 
 # Only if you are using fdm
 fdm_config: ~/.config/fdm/fdm.conf
