@@ -7,7 +7,8 @@
 `mailctl` provides IMAP/SMTP clients with the capabilities of renewal and
 authorization of OAuth2 credentials.
 
-The Oauth2 credentials are kept in **the Gnome keyring** or
+The Oauth2 credentials are kept in the
+[**Gnome keyring**](https://wiki.gnome.org/Projects/GnomeKeyring/) or
 in [GNU PG](https://www.gnupg.org/) **encrypted files**.
 
 Many IMAP/SMTP clients, like [msmtp](https://marlam.de/msmtp/),
