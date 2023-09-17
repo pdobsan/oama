@@ -12,8 +12,10 @@ module MailCtl.Utilities (
   listAccounts,
   fetch,
   getEmailPwd,
+  mkCodeVerifier
 ) where
 
+import Control.Monad
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
@@ -25,6 +27,7 @@ import System.Environment qualified as E
 import System.Exit (ExitCode (ExitSuccess), exitFailure, exitSuccess, exitWith)
 import System.Posix.Syslog (Priority (..), syslog)
 import System.Process qualified as P
+import System.Random
 import Text.Pretty.Simple
 
 logger :: Priority -> String -> IO ()
@@ -132,3 +135,17 @@ getEmailPwd' env email_ = do
         Nothing -> do
           putStrLn "getEmailPwd': there is no 'pass_cmd' configured."
           exitFailure
+
+-- Proof Key for Code Exchange by OAuth Public Clients
+--  https://datatracker.ietf.org/doc/html/rfc7636
+
+unreservedCharacters :: [Char]
+unreservedCharacters = ['A' .. 'Z'] ++ ['a' .. 'z'] ++ ['0' .. '9'] ++ ['-', '.', '_', '~']
+
+randstr :: String -> Int -> IO String
+randstr base len = do
+  xs <- replicateM len (randomRIO (0, length base - 1))
+  return [ base !! x | x <- xs ]
+
+mkCodeVerifier :: Int -> IO String
+mkCodeVerifier len = randstr unreservedCharacters len

@@ -45,15 +45,28 @@ import Web.Twain qualified as TW
 -- https://developers.google.com/identity/protocols/oauth2/native-app
 -- https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow
 --
--- The managed credentials are kept in encrypted files using GNU PG.
+-- The managed credentials are kept in either in gnome keyring
+-- or in gpg encrypted files.
 
-readAuthRecord :: Environment -> EmailAddress -> IO AuthRecord
-readAuthRecord env email_ = do
-  let gpgFile = env.config.oauth2_dir <> "/" <> email_.unEmailAddress <> ".auth"
+getAR :: Maybe Program -> Maybe Program -> Maybe FilePath -> EmailAddress -> IO AuthRecord
+getAR (Just ring_lookup_) Nothing Nothing email_ = do
+  (x, o, e) <- P.readProcessWithExitCode ring_lookup_.exec
+                (ring_lookup_.args ++ [email_.unEmailAddress]) ""
+  if x == ExitSuccess
+    then case eitherDecode' (BLU.fromString o) :: Either String AuthRecord of
+      Left err -> error $ "readAuthRecord:\n" ++ err
+      Right rec -> return rec
+    else do
+      putStrLn $ "Can't find authorization record for " ++ unEmailAddress email_
+      putStr e
+      exitWith x
+
+getAR Nothing (Just decrypt_cmd_) (Just oauth2_dir_) email_ = do
+  let gpgFile = oauth2_dir_ <> "/" <> email_.unEmailAddress <> ".auth"
   authRecExist <- D.doesFileExist gpgFile
   if authRecExist
     then do
-      let decrypt = env.config.decrypt_cmd
+      let decrypt = decrypt_cmd_
       (x, o, e) <- P.readProcessWithExitCode decrypt.exec (decrypt.args <> [gpgFile]) ""
       if x == ExitSuccess
         then case eitherDecode' (BLU.fromString o) :: Either String AuthRecord of
@@ -67,16 +80,36 @@ readAuthRecord env email_ = do
       putStrLn "You must run the 'authorize' command before using other operations."
       exitFailure
 
-writeAuthRecord :: Environment -> EmailAddress -> AuthRecord -> IO ()
-writeAuthRecord env email_ rec = do
-  let gpgFile = env.config.oauth2_dir <> "/" <> email_.unEmailAddress <> ".auth"
+getAR _ _ _ _ = error "getAR: bummer!"
+
+getAuthRecord :: Environment -> EmailAddress -> IO AuthRecord
+getAuthRecord env email_ = do
+  getAR env.config.ring_lookup env.config.decrypt_cmd env.config.oauth2_dir email_
+
+putAR :: Maybe Program -> Maybe Program -> Maybe FilePath -> EmailAddress -> AuthRecord -> IO ()
+putAR (Just ring_store_) Nothing Nothing email_ rec = do
+  let jsrec = BLU.toString $ encode rec
+      m = email_.unEmailAddress
+  (Just h, _, _, p) <-
+    P.createProcess
+      (P.proc ring_store_.exec (ring_store_.args ++ ["mailctl " ++ m, "mailctl", m]))
+      { P.std_in = P.CreatePipe }
+  IO.hPutStr h jsrec
+  IO.hFlush h
+  IO.hClose h
+  x <- P.waitForProcess p
+  if x == ExitSuccess
+    then return ()
+    else exitWith x
+
+putAR Nothing (Just encrypt_cmd_) (Just oauth2_dir_) email_ rec = do
+  let gpgFile = oauth2_dir_ <> "/" <> email_.unEmailAddress <> ".auth"
       jsrec = BLU.toString $ encode rec
-      encrypt = env.config.encrypt_cmd
   (Just h, _, _, p) <-
     P.createProcess
       ( P.proc
-          encrypt.exec
-          (encrypt.args <> [gpgFile <> ".new"])
+          encrypt_cmd_.exec
+          (encrypt_cmd_.args <> [gpgFile <> ".new"])
       )
         { P.std_in = P.CreatePipe
         }
@@ -87,6 +120,12 @@ writeAuthRecord env email_ rec = do
   if x == ExitSuccess
     then D.renameFile (gpgFile ++ ".new") gpgFile
     else exitWith x
+
+putAR _ _ _ _ _ = error "putAR: bummer!"
+
+putAuthRecord :: Environment -> EmailAddress -> AuthRecord -> IO ()
+putAuthRecord env email_ rec = do
+  putAR env.config.ring_lookup env.config.encrypt_cmd env.config.oauth2_dir email_ rec
 
 timeStampFormat :: String
 timeStampFormat = "%Y-%m-%d %H:%M %Z"
@@ -102,7 +141,7 @@ getEmailAuth env email_ = do
 
 getEmailAuth' :: Environment -> EmailAddress -> IO (Either String AuthRecord)
 getEmailAuth' env email_ = do
-  authrec <- readAuthRecord env email_
+  authrec <- getAuthRecord env email_
   now <- getCurrentTime
   let expd = fromMaybe "2000-01-01 12:00 UTC" authrec.exp_date
   if now > parseTimeOrError True defaultTimeLocale timeStampFormat expd
@@ -123,8 +162,8 @@ getEmailAuth' env email_ = do
                       scope = scope newat,
                       token_type = token_type newat
                     }
-            writeAuthRecord env email_ authrec'
-            logger Notice $ printf "new acccess token for %s - expires at %s" (unEmailAddress email_) expDate
+            putAuthRecord env email_ authrec'
+            logger Notice $ printf "new access token for %s - expires at %s" (unEmailAddress email_) expDate
             return $ Right authrec'
     else return $ Right authrec
 
@@ -226,7 +265,7 @@ renewAccessToken env (Just serv) rft = do
 
 forceRenew :: Environment -> EmailAddress -> IO ()
 forceRenew env email_ = do
-  authrec <- readAuthRecord env email_
+  authrec <- getAuthRecord env email_
   now <- getCurrentTime
   renewAccessToken env (service authrec) (refresh_token authrec)
     >>= \case
@@ -244,9 +283,9 @@ forceRenew env email_ = do
                   scope = scope newat,
                   token_type = token_type newat
                 }
-        writeAuthRecord env email_ authrec'
-        logger Notice $ printf "new acccess token for %s - expires at %s" (unEmailAddress email_) expDate
-        printf "Obtained new acccess token for %s - expires at %s.\n" (unEmailAddress email_) expDate
+        putAuthRecord env email_ authrec'
+        logger Notice $ printf "new access token for %s - expires at %s" (unEmailAddress email_) expDate
+        printf "Obtained new access token for %s - expires at %s.\n" (unEmailAddress email_) expDate
 
 -- initial registration for authorization credentials
 
@@ -278,6 +317,7 @@ generateAuthPage env serv email_ = do
           ("response_type", Just "code"),
           ("scope", serviceFieldLookup ss serv auth_scope),
           ("login_hint", Just $ unEmailAddress email_)
+          -- ,("prompt", Just "consent")
         ]
       httpMethod = fromMaybe "GET" $ serviceFieldLookup ss serv auth_http_method
   case serviceFieldLookup ss serv auth_endpoint of
@@ -313,16 +353,18 @@ localWebServer mvar env serv email_ = do
                     let expire = addUTCTime (expires_in authr - 300) now
                         expDate = formatTime defaultTimeLocale timeStampFormat expire
                         authRec = authr {exp_date = Just expDate, email = Just email_, service = Just serv}
-                    liftIO $ writeAuthRecord env email_ authRec
+                    liftIO $ putAuthRecord env email_ authRec
                     liftIO $ putMVar mvar AuthSuccess
                     TW.send $
                       TW.html $
                         BLU.fromString $
                           printf "<h4>Received new refresh and access tokens for %s</h4>" (unEmailAddress email_)
+                          {--
                             <> printf
                               "<p>They have been saved encrypted in <kbd>%s/%s.auth</kbd></p>"
                               (oauth2_dir (config env))
                               (unEmailAddress email_)
+                          --}
 
             casService :: TW.ResponderM a
             casService = do
@@ -369,12 +411,8 @@ makeAuthRecord env servName email_ =
 
 authorizeEmail :: Environment -> String -> EmailAddress -> Bool -> IO ()
 authorizeEmail env servName email_ company = do
-  authFileExists <- D.doesFileExist $ oauth2_dir (config env) ++ "/" ++ unEmailAddress email_ ++ ".auth"
-  authrec <-
-    if authFileExists
-      then readAuthRecord env email_
-      else return $ makeAuthRecord env servName email_
-  case service authrec of
+  -- when this function is called we always start from scratch
+  case service (makeAuthRecord env servName email_) of
     Nothing -> error "authorizeEmail: missing service field in AuthRecord."
     Just serv -> do
       case serviceFieldLookup (services env) serv redirect_uri of

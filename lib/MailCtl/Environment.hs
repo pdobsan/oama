@@ -32,7 +32,8 @@ import MailCtl.CommandLine
 import Network.URI
 import Options.Applicative (customExecParser, prefs, showHelpOnEmpty)
 import System.Directory qualified as Dir
-import System.Environment (getEnv)
+import System.Environment (getEnv, setEnv)
+import System.Posix.User (getRealUserID)
 import System.Exit (ExitCode (ExitSuccess), exitFailure)
 import System.Process qualified as Proc
 import Text.Printf
@@ -60,9 +61,11 @@ data Program = Program
 
 data Configuration = Configuration
   { services_file :: FilePath,
-    decrypt_cmd :: Program,
-    encrypt_cmd :: Program,
-    oauth2_dir :: FilePath,
+    ring_store :: Maybe Program,
+    ring_lookup :: Maybe Program,
+    decrypt_cmd :: Maybe Program,
+    encrypt_cmd :: Maybe Program,
+    oauth2_dir :: Maybe FilePath,
     fdm_config :: Maybe FilePath,
     fdm_accounts :: Maybe FilePath,
     cron_indicator :: Maybe FilePath,
@@ -143,6 +146,8 @@ getPortFromURIStr (Just uri) = case parseURI uri of
 
 loadEnvironment :: IO Environment
 loadEnvironment = do
+  uid <- getRealUserID
+  setEnv "DBUS_SESSION_BUS_ADDRESS" ("unix:path=/run/user/" ++ show uid ++ "/bus")
   env <- mkEnvironment
   enabled <- isCronEnabled env
   return $ env {system_state = env.system_state {cron_enabled = enabled}}
@@ -156,7 +161,7 @@ mkEnvironment = do
   cfg <- readConfig configFile
   hd <- getEnv "HOME"
   let cfg' = cfg{ services_file = expandTilde cfg.services_file hd,
-                  oauth2_dir = expandTilde cfg.oauth2_dir hd,
+                  oauth2_dir = expandTilde_ cfg.oauth2_dir hd,
                   fdm_config = expandTilde_ cfg.fdm_config hd,
                   fdm_accounts = expandTilde_ cfg.fdm_accounts hd,
                   cron_indicator = expandTilde_ cfg.cron_indicator hd,
