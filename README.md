@@ -1,7 +1,6 @@
 # mailctl
 
 [![Build](https://github.com/pdobsan/mailctl/actions/workflows/build.yaml/badge.svg)](https://github.com/pdobsan/mailctl/actions/workflows/build.yaml)
-[![builds.sr.ht status](https://builds.sr.ht/~petrus/mailctl.svg)](https://builds.sr.ht/~petrus/mailctl?)
 
 
 `mailctl` provides IMAP/SMTP clients with the capabilities of renewal and
@@ -149,18 +148,28 @@ the `--debug` switch which causes `mailctl` to mirror print HTTP traffic to
     # fetch mail in every 10 minutes
     */10 * * * *  mailctl --run-by-cron fetch
 
+### Switching to the new Gnome keyring backend.
+
+If you have been using GPG encrypted files to store your OAuth credentials
+and want to switch to Gnome keyring you either need to authorize your
+account again or transfer your current credentials into the keyring.
+
+First edit your ~/.config/mailctl/config.yaml to choose keyring.
+
+To transfer your credentials into the keyring you can try something like
+this. Note the quote around the arguments to --label.
+
+    gpg -d you@example.io.auth | secret-tool store --label "mailctl you@example.io" mailctl you@example.io
 
 ## Installation
 
 ### Compiled static binaries
 
 Each release contains compiled static executables of `mailctl` which should
-work on most Linux distributions. Select the version you want to download from
-[sourcehut](https://git.sr.ht/~petrus/mailctl/refs), click on the version link
-and download the tar file containing the compiled executable from that page.
-The same pre-compiled packages are also available from
-[github](https://github.com/pdobsan/mailctl/releases).
+work on most Linux distributions.
 Currently Linux/x86_64 and Linux/aarch64(arm64) binaries are provided.
+Select the version you want to download from
+[releases](https://github.com/pdobsan/mailctl/releases).
 
 #### Archlinux
 
@@ -177,7 +186,7 @@ below:
 
 Clone this repository and invoke `cabal`:
 
-    git clone https://git.sr.ht/~petrus/mailctl
+    git clone https://gitgub.com/pdobsan/mailctl
     cd mailctl
     cabal update
     cabal install --install-method=copy
@@ -191,26 +200,15 @@ All transactions and exceptions are logged to `syslog`. If your OS using
 
     journalctl --identifier fdm --identifier mailctl --identifier msmtp -e
 
+## Issues
 
-## Issues, Contributing and Announcements
-
-Please, report any issues, questions, suggestions regarding `mailctl` at
-**Sourcehut** by sending a plain text email to
-<~petrus/mailctl-discuss@lists.sr.ht>. No registration is necessary but please
-read the [Mailing list etiquette](https://man.sr.ht/lists.sr.ht/etiquette.md)
-before posting.
-
-You can also browse the [`mailctl` mailing lists](https://sr.ht/~petrus/mailctl/lists).
-
-You might want to subscribe to some of them by emailing to
-`~user/list-name+subscribe@lists.sr.ht` or just clicking on the _Subscribe_
-link on the particular list's page. You can unsubscribe with `+unsubscribe`.
-
+Please, report any problems, questions, suggestions regarding `mailctl` by
+opening an issue or by starting a discussion here.
 
 ## Acknowledgment 
 
-The method of dealing with OAuth2 services, in particular keeping them in
-GnuPG encrypted files was inspired by the
+The method of dealing with OAuth2 services, in particular keeping the
+credentials in GnuPG encrypted files was inspired by the
 [mutt_oauth2.py](https://gitlab.com/muttmua/mutt/-/blob/master/contrib/mutt_oauth2.py)
 Python script written by Alexander Perlis.
 
