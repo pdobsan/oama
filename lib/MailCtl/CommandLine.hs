@@ -103,10 +103,7 @@ authorizeOptions =
   Authorize
     <$> strArgument (metavar "<service>" <> help "Service name")
     <*> strArgument (metavar "<email>" <> help "Email address")
-    <*> switch
-      ( long "company"
-          <> help "Treat <email> as company/institution email address"
-      )
+    <*> switch (long "nohint" <> help "Don't pass login hint")
 
 listEmails :: Mod CommandFields Command
 listEmails = command "list" (info (pure ListEmails) (progDesc "List all accounts in fdm's config"))

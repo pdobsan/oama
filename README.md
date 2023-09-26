@@ -78,28 +78,23 @@ example:
 
     % mailctl authorize -h
 
-    Usage: mailctl authorize <service> <email> [--company]
+    Usage: mailctl authorize <service> <email> [--nohint]
 
       Authorize OAuth2 for service/email
 
     Available options:
       <service>                Service name
       <email>                  Email address
-      --company                Treat <email> as company/institution email address
+      --nohint                 Don't pass login hint
       -h,--help                Show this help text
 
 Shell completion for `bash`, `zsh` and `fish` shells are provided.
 
-### Authorization for Organizational/Institutional accounts
+### Authorization for Corporate/Organizational/Institutional accounts
 
-The authorization process of Organizational/Institutional accounts can
-slightly be different from of individual accounts.
-
-#### Google Organizational Account
-
-When you want to authorize such an account invoke `mailctl` like this:
-
-    mailctl authorize google <you@company.email> --company
+Corporation/Organization/Institution accounts might be treated differently by
+the service provider. In such cases, not passing a login hint might be useful --
+this is eg the case for Google organizational accounts.
 
 #### Microsoft Organizational Account
 

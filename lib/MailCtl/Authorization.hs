@@ -304,15 +304,16 @@ getAccessToken env serv authcode = do
         Nothing -> error "getAccessToken: missing token_params_mode field in Services."
         Just paramsMode -> fetchAuthRecord env httpMethod (decodeParamsMode paramsMode) tokenEndpoint qs
 
-generateAuthPage :: Environment -> String -> EmailAddress -> IO (Either String BSU.ByteString)
-generateAuthPage env serv email_ = do
+generateAuthPage :: Environment -> String -> EmailAddress -> Bool -> IO (Either String BSU.ByteString)
+generateAuthPage env serv email_ noHint = do
   let ss = services env
+      hint = if noHint then "dummy-email-address" else unEmailAddress email'
       qs =
         [ ("client_id", serviceFieldLookup ss serv client_id),
           ("redirect_uri", serviceFieldLookup ss serv redirect_uri),
           ("response_type", Just "code"),
           ("scope", serviceFieldLookup ss serv auth_scope),
-          ("login_hint", Just $ unEmailAddress email_)
+          ("login_hint", Just hint)
           -- ,("prompt", Just "consent")
         ]
       httpMethod = fromMaybe "GET" $ serviceFieldLookup ss serv auth_http_method
@@ -325,9 +326,9 @@ generateAuthPage env serv email_ = do
 
 data AuthResult = AuthSuccess | AuthFailure
 
-localWebServer :: MVar AuthResult -> Environment -> String -> EmailAddress -> IO ()
-localWebServer mvar env serv email_ = do
-  generateAuthPage env serv email_
+localWebServer :: MVar AuthResult -> Environment -> String -> EmailAddress -> Bool -> IO ()
+localWebServer mvar env serv email_ noHint = do
+  generateAuthPage env serv email_ noHint
     >>= \case
       Left errmsg -> error $ "localWebServer:\n" ++ errmsg
       Right authP -> do
@@ -404,7 +405,7 @@ makeAuthRecord env servName email_ =
             (Just servName)
 
 authorizeEmail :: Environment -> String -> EmailAddress -> Bool -> IO ()
-authorizeEmail env servName email_ company = do
+authorizeEmail env servName email_ noHint = do
   -- when this function is called we always start from scratch
   case service (makeAuthRecord env servName email_) of
     Nothing -> error "authorizeEmail: missing service field in AuthRecord."
@@ -415,14 +416,7 @@ authorizeEmail env servName email_ company = do
           putStrLn $ "To grant OAuth2 access to " ++ unEmailAddress email_ ++ " visit the local URL below with your browser."
           putStrLn $ redirect ++ "/start"
       mvar <- newEmptyMVar
-      let email' = if company
-                      -- assuming that the above keys are used in services.yaml !!!
-                      then case servName of
-                        "google" -> EmailAddress "dummy-email-address"
-                        "microsoft" -> email_
-                        _ -> error $ "authorizeEmail: don't know how to deal with '" ++ servName ++ "' company email.\nYou may try it without the --company flag."
-                      else email_
-      _ <- forkIO $ localWebServer mvar env serv email'
+      _ <- forkIO $ localWebServer mvar env serv email_ noHint
       printf "Authorization started ... \n"
       takeMVar mvar
         >>= \case
