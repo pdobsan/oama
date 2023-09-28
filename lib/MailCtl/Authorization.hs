@@ -92,7 +92,7 @@ putAR (Just ring_store_) Nothing Nothing email_ rec = do
       m = email_.unEmailAddress
   (Just h, _, _, p) <-
     P.createProcess
-      (P.proc ring_store_.exec (ring_store_.args ++ ["email:" ++ m, "oauth", m]))
+      (P.proc ring_store_.exec (ring_store_.args ++ ["email:" ++ m, "mailctl", m]))
       {P.std_in = P.CreatePipe}
   IO.hPutStr h jsrec
   IO.hFlush h
