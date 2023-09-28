@@ -92,7 +92,7 @@ putAR (Just ring_store_) Nothing Nothing email_ rec = do
       m = email_.unEmailAddress
   (Just h, _, _, p) <-
     P.createProcess
-      (P.proc ring_store_.exec (ring_store_.args ++ ["mailctl " ++ m, "mailctl", m]))
+      (P.proc ring_store_.exec (ring_store_.args ++ ["email:" ++ m, "oauth", m]))
       {P.std_in = P.CreatePipe}
   IO.hPutStr h jsrec
   IO.hFlush h
@@ -307,7 +307,7 @@ getAccessToken env serv authcode = do
 generateAuthPage :: Environment -> String -> EmailAddress -> Bool -> IO (Either String BSU.ByteString)
 generateAuthPage env serv email_ noHint = do
   let ss = services env
-      hint = if noHint then "dummy-email-address" else unEmailAddress email'
+      hint = if noHint then "dummy-email-address" else unEmailAddress email_
       qs =
         [ ("client_id", serviceFieldLookup ss serv client_id),
           ("redirect_uri", serviceFieldLookup ss serv redirect_uri),
