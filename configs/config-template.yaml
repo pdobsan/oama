@@ -25,7 +25,7 @@ ring_lookup:
   exec: secret-tool
   args:
     - lookup
-    - mailctl
+    - oauth
 # -
 
 # Saving OAuth2 credentials in files encrypted by GPG
