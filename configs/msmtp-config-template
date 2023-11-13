@@ -20,7 +20,10 @@ account default: local
 
 
 # email account with IMAP user/password access
-
+#
+# for Gmail
+#   don't "user YOUR_EMAIL_NAME@EMAIL_SERVICE.COM"
+#   do    "user YOUR_EMAIL_NAME"
 account YOUR_EMAIL_NAME@EMAIL_SERVICE.COM
 from YOUR_EMAIL_NAME@EMAIL_SERVICE.COM
 user YOUR_EMAIL_NAME@EMAIL_SERVICE.COM
@@ -47,4 +50,3 @@ tls on
 tls_trust_file /etc/ssl/certs/ca-certificates.crt
 
 ### ...
-
