@@ -1,6 +1,6 @@
 cabal-version:      3.8
-name:               mailctl
-version:            0.9.2
+name:               oama
+version:            0.2.0
 license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Peter Dobsan
@@ -39,20 +39,20 @@ common common
 library
   import:         common
   hs-source-dirs: lib
-  other-modules:  Paths_mailctl
-  autogen-modules: Paths_mailctl
+  other-modules:  Paths_oama
+  autogen-modules: Paths_oama
   exposed-modules:
-    MailCtl.Authorization,
-    MailCtl.CommandLine,
-    MailCtl.Environment,
-    MailCtl.Utilities,
+    OAMa.Authorization,
+    OAMa.CommandLine,
+    OAMa.Environment,
+    OAMa.Utilities,
 
-executable mailctl
+executable oama
   import:         common
   main-is:        Main.hs
   hs-source-dirs: app
   build-depends:
-    mailctl,
+    oama,
   ghc-options:
     -rtsopts
     -threaded

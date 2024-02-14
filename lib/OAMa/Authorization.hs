@@ -5,7 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module MailCtl.Authorization (
+module OAMa.Authorization (
   authorizeEmail,
   getEmailAuth,
   forceRenew,
@@ -25,9 +25,9 @@ import Data.Text (Text)
 import Data.Text.Lazy.Encoding qualified as TLE
 import Data.Time.Clock
 import Data.Time.Format
-import MailCtl.CommandLine
-import MailCtl.Environment
-import MailCtl.Utilities (logger)
+import OAMa.CommandLine
+import OAMa.Environment
+import OAMa.Utilities (logger)
 import Network.HTTP.Conduit
 import Network.HTTP.Simple
 import Network.Wai.Handler.Warp qualified as Warp
@@ -92,7 +92,7 @@ putAR (Just ring_store_) Nothing Nothing email_ rec = do
       m = email_.unEmailAddress
   (Just h, _, _, p) <-
     P.createProcess
-      (P.proc ring_store_.exec (ring_store_.args ++ ["email:" ++ m, "mailctl", m]))
+      (P.proc ring_store_.exec (ring_store_.args ++ ["email:" ++ m, "oauth", m]))
       {P.std_in = P.CreatePipe}
   IO.hPutStr h jsrec
   IO.hFlush h
@@ -405,7 +405,7 @@ makeAuthRecord env servName email_ =
             (Just servName)
 
 authorizeEmail :: Environment -> String -> EmailAddress -> Bool -> IO ()
-authorizeEmail env servName email_ noHint = do
+authorizeEmail env servName email_ noHint= do
   -- when this function is called we always start from scratch
   case service (makeAuthRecord env servName email_) of
     Nothing -> error "authorizeEmail: missing service field in AuthRecord."

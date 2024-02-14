@@ -1,11 +1,10 @@
-# The primary purpose of mailctl is providing IMAP/SMTP clients with the
+# The purpose of oama is providing IMAP/SMTP clients with the
 # capabilities of renewal and authorization of OAuth2 credentials. 
-# Accordingly only the OAuth2 related config entries are mandatory.
 
 # Any path can be absolute or rooted to the home directory 
 # using tilde expansion (~/...)
 
-services_file: ~/.config/mailctl/services.yaml
+services_file: ~/.config/oama/services.yaml
 
 # OAuth2 credentials are kept in the Gnome keyring or
 # in GPG encrypted files
@@ -25,12 +24,12 @@ ring_lookup:
   exec: secret-tool
   args:
     - lookup
-    - mailctl
+    - oama
 # -
 
 # Saving OAuth2 credentials in files encrypted by GPG
 # +
-oauth2_dir: ~/.local/var/mailctl
+oauth2_dir: ~/.local/var/oama
 encrypt_cmd:
   exec: gpg
   args:
@@ -43,19 +42,3 @@ decrypt_cmd:
   args:
     - --decrypt
 # -
-
-# Only if you are using fdm
-fdm_config: ~/.config/fdm/fdm.conf
-fdm_accounts: ~/.config/fdm/accounts.conf
-
-# Only if you are running mailctl directly by cron
-cron_indicator: ~/.local/var/mailctl/fdm-cron-enabled
-
-# Only if you are using a password manager for traditional access methods
-# This is an example of using `pass`
-password_store: ~/.local/var/password-store
-pass_cmd:
-  exec: pass
-  args:
-    - email/
-

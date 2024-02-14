@@ -1,4 +1,4 @@
-packages: mailctl.cabal
+packages: oama.cabal
 optimization: 2
-package mailctl
+package oama
   executable-stripping: True
