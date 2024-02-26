@@ -138,7 +138,7 @@ below:
 
 Clone this repository and invoke `cabal`:
 
-    git clone https://gitgub.com/pdobsan/oama
+    git clone https://github.com/pdobsan/oama
     cd oama
     cabal update
     cabal install --install-method=copy
