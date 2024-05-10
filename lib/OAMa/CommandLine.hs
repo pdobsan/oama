@@ -1,3 +1,7 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE ImportQualifiedPost #-}
+
 module OAMa.CommandLine (
   Opts (..),
   Command (..),
@@ -5,32 +9,34 @@ module OAMa.CommandLine (
 ) where
 
 import Data.Version (showVersion)
+import Data.Yaml qualified as Yaml
+import GHC.Generics
 import Options.Applicative
 import Paths_oama (version)
 
 data Opts = Opts
-  { optConfig :: !String,
-    optDebug :: !Bool,
-    optCommand :: !Command
+  { optDebug :: !Bool
+  , optCommand :: !Command
   }
-  deriving (Eq, Show)
+  deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
 data Command
   = Oauth2 String
   | Renew String
   | Authorize String String Bool
   | PrintEnv
-  deriving (Eq, Show)
+  deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
 optsParser :: ParserInfo Opts
 optsParser =
   info
     (helper <*> versionOption <*> programOptions)
     ( fullDesc
-        <> progDesc ("OAMa is an OAuth credential manager providing store/lookup, automatic renewal and authorization operations. " ++
-                     "The credentials are stored either in the Gnome keyring or in files encrypted by GnuPG. " ++
-                     "OAMa is useful for IMAP/SMTP or other network clients which cannot authorize and renew OAuth tokens on their own. "
-                    )
+        <> progDesc
+          ( "OAMa is an OAuth credential manager providing store/lookup, automatic renewal and authorization operations. "
+              ++ "The credentials are stored either in the Gnome keyring or in files encrypted by GnuPG. "
+              ++ "OAMa is useful for IMAP/SMTP or other network clients which cannot authorize and renew OAuth tokens on their own. "
+          )
         <> header "OAMa - OAuth credential manager with store/lookup, renewal, authorization."
     )
 
@@ -39,20 +45,13 @@ versionOption = do
   let verinfo =
         "oama version "
           <> showVersion version
-          <> "\nCopyright (C) Peter Dobsan 2023"
+          <> "\nCopyright (C) Peter Dobsan 2024"
   infoOption verinfo (long "version" <> help "Show version")
 
 programOptions :: Parser Opts
 programOptions =
   Opts
-    <$> strOption
-      ( long "config-file"
-          <> short 'c'
-          <> metavar "<config>"
-          <> value ""
-          <> help "Configuration file"
-      )
-    <*> switch (long "debug" <> help "Print HTTP traffic to stdout")
+    <$> switch (long "debug" <> help "Print HTTP traffic to stdout")
     <*> hsubparser (oauth2 <> renew <> authorize <> printEnv)
 
 oauth2 :: Mod CommandFields Command

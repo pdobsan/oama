@@ -1,6 +1,6 @@
 cabal-version:      3.8
 name:               oama
-version:            0.2.0
+version:            0.3.0
 license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Peter Dobsan
@@ -14,7 +14,6 @@ common common
     aeson,
     base >=4.16,
     bytestring,
-    base64,
     containers,
     directory,
     hsyslog,
@@ -23,9 +22,8 @@ common common
     optparse-applicative,
     pretty-simple,
     process,
-    random,
+    string-qq,
     strings,
-    template-haskell,
     text,
     time,
     twain,
@@ -45,7 +43,6 @@ library
     OAMa.Authorization,
     OAMa.CommandLine,
     OAMa.Environment,
-    OAMa.Utilities,
 
 executable oama
   import:         common

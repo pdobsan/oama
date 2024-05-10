@@ -1,157 +1,242 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module OAMa.Environment (
-  loadEnvironment,
-  getPortFromURIStr,
-  serviceFieldLookup,
   AuthRecord (..),
   Configuration (..),
-  EmailAddress (..),
   Environment (..),
+  ServiceAPI (..),
+  Encryption (..),
+  Credentials (..),
+  EmailAddress (..),
   HTTPMethod (..),
   ParamsMode (..),
-  Program (..),
-  Service (..),
-  Services,
+  checkInit,
+  loadEnvironment,
+  credentialLookup,
+  getServiceAPI,
+  pprintEnv,
+  logger,
 ) where
 
+import Control.Applicative ((<|>))
+import Data.ByteString.UTF8 qualified as BSU
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Strings (strStartsWith, strDrop)
--- import Data.Text qualified as Text
+import Data.Maybe
+import Data.String.QQ
 import Data.Time.Clock
+import Data.Version (showVersion)
 import Data.Yaml qualified as Yaml
 import GHC.Generics
 import OAMa.CommandLine
-import Network.URI (parseURI, uriAuthority, uriPort)
 import Options.Applicative (customExecParser, prefs, showHelpOnEmpty)
+import Paths_oama (version)
 import System.Directory qualified as Dir
 import System.Environment (getEnv, setEnv)
+import System.Exit (ExitCode (ExitSuccess), exitFailure)
 import System.Posix.User (getRealUserID)
-import System.Exit (exitFailure)
--- import System.Process qualified as Proc
-import Text.Printf
+import System.Process qualified as Proc
+
+import Foreign.C.String
+import System.Posix.Syslog (Priority (..), syslog)
+
+data Encryption = GPG String | GRING
+  deriving (Eq, Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
+
+data ParamsMode = RequestBody | RequestBodyForm | QueryString
+  deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
+data HTTPMethod = POST | GET
+  deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
+
+data ServiceAPI = ServiceAPI
+  { auth_endpoint :: String
+  , auth_http_method :: HTTPMethod
+  , auth_params_mode :: ParamsMode
+  , token_endpoint :: String
+  , token_http_method :: HTTPMethod
+  , token_params_mode :: ParamsMode
+  , auth_scope :: String
+  , tenant :: Maybe String
+  }
+  deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
+
+googleAPI :: ServiceAPI
+googleAPI =
+  ServiceAPI
+    { auth_endpoint = "https://accounts.google.com/o/oauth2/auth"
+    , auth_http_method = POST
+    , auth_params_mode = QueryString
+    , token_endpoint = "https://accounts.google.com/o/oauth2/token"
+    , token_http_method = POST
+    , token_params_mode = RequestBody
+    , auth_scope = "https://mail.google.com/"
+    , tenant = Nothing
+    }
+
+microsoftAPI :: ServiceAPI
+microsoftAPI =
+  ServiceAPI
+    { auth_endpoint = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+    , auth_http_method = GET
+    , auth_params_mode = QueryString
+    , token_endpoint = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+    , token_http_method = POST
+    , token_params_mode = RequestBodyForm
+    , auth_scope =
+        "https://outlook.office365.com/IMAP.AccessAsUser.All https://outlook.office365.com/SMTP.Send offline_access"
+    , tenant = Just "common"
+    }
+
+defaultPort :: Int
+defaultPort = 8080
+
+type Services = Map String ServiceAPI
+
+data Credentials = Credentials
+  { client_id :: String
+  , client_secret :: String
+  }
+  deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
+
+data Configuration = Configuration
+  { encryption :: Encryption
+  , redirect_port :: Maybe Int
+  , credentials :: Map String Credentials
+  }
+  deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
+
+initialConfig :: String
+initialConfig =
+  [s|
+# oama configuration
+
+## Possible options for keeping refresh and access tokens:
+## GPG - in a gpg encrypted file ~/.local/var/oama/<email-address>.oauth
+## GRING - in the default Gnome keyring
+##
+## Choose exactly one.
+
+encryption:
+    tag: GRING
+
+# encryption:
+#   tag: GPG
+#   contents: your-KEY-ID
+
+## It must be >= 1024
+# redirect_port: 8080
+
+## Possible service providers
+## - google
+## - microsoft
+## Use your own credentials or the ones of an opensource app (like thunderbird ...)
+credentials:
+  google:
+    client_id: application-CLIENT-ID 
+    client_secret: application-CLIENT-SECRET
+  # microsoft:
+  #   client_id: application-CLIENT-ID 
+  #   client_secret: application-CLIENT_SECRET
+|]
+
+data Environment = Environment
+  { oama_version :: String
+  , op_sys :: String
+  , data_dir :: String
+  , config_dir :: String
+  , config :: Configuration
+  , services :: Services
+  , options :: Opts
+  }
+  deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
 newtype EmailAddress = EmailAddress {unEmailAddress :: String}
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
 data AuthRecord = AuthRecord
-  { access_token :: String,
-    expires_in :: NominalDiffTime,
-    scope :: String,
-    token_type :: String,
-    exp_date :: Maybe String,
-    refresh_token :: Maybe String,
-    email :: Maybe EmailAddress,
-    service :: Maybe String
+  { access_token :: String
+  , expires_in :: NominalDiffTime
+  , scope :: String
+  , token_type :: String
+  , exp_date :: Maybe String
+  , refresh_token :: Maybe String
+  , email :: Maybe EmailAddress
+  , service :: Maybe String
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
-
-data Program = Program
-  { exec :: FilePath,
-    args :: [String]
-  }
-  deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
-
-data Configuration = Configuration
-  { services_file :: FilePath,
-    ring_store :: Maybe Program,
-    ring_lookup :: Maybe Program,
-    decrypt_cmd :: Maybe Program,
-    encrypt_cmd :: Maybe Program,
-    oauth2_dir :: Maybe FilePath
-  }
-  deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
-
-data ParamsMode = RequestBody | RequestBodyForm | QueryString
-data HTTPMethod = POST | GET
-
-data Service = Service
-  { auth_endpoint :: Maybe String,
-    auth_http_method :: Maybe String,
-    auth_params_mode :: Maybe String,
-    token_endpoint :: Maybe String,
-    token_http_method :: Maybe String,
-    token_params_mode :: Maybe String,
-    redirect_uri :: Maybe String,
-    tenant :: Maybe String,
-    auth_scope :: Maybe String,
-    client_id :: Maybe String,
-    client_secret :: Maybe String
-  }
-  deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
-
-type Services = Map String Service
-
-data Environment = Environment
-  { config :: Configuration,
-    services :: Services,
-    options :: Opts
-  }
-  deriving (Show)
-
-defaultPORT :: Int
-defaultPORT = 8080
-
-serviceFieldLookup :: Services -> String -> (Service -> Maybe String) -> Maybe String
-serviceFieldLookup services_ servName field = Map.lookup servName services_ >>= field
-
-getPortFromURIStr :: Maybe String -> Int
-getPortFromURIStr Nothing = defaultPORT
-getPortFromURIStr (Just uri) = case parseURI uri of
-  Nothing -> error $ printf "invalid redirect uri: %s" uri
-  Just uri_ -> case uriAuthority uri_ of
-    Nothing -> defaultPORT
-    Just auth -> convert auth.uriPort
-  where
-    convert :: String -> Int
-    convert "" = defaultPORT
-    convert ps = read (drop 1 ps)
 
 loadEnvironment :: IO Environment
 loadEnvironment = do
-  uid <- getRealUserID
-  setEnv "DBUS_SESSION_BUS_ADDRESS" ("unix:path=/run/user/" ++ show uid ++ "/bus")
-  mkEnvironment
-
-mkEnvironment :: IO Environment
-mkEnvironment = do
-  configDir <- Dir.getXdgDirectory Dir.XdgConfig "oama"
+  (configDir, dataDir) <- checkInit
+  opsys <- uname
   opts <- customExecParser (prefs showHelpOnEmpty) optsParser
-  let cfgOption = optConfig opts
-      configFile = if cfgOption == "" then configDir <> "/config.yaml" else cfgOption
-  cfg <- readConfig configFile
-  hd <- getEnv "HOME"
-  let cfg' = cfg{ services_file = expandTilde cfg.services_file hd,
-                  oauth2_dir = expandTilde_ cfg.oauth2_dir hd
-                }
-  Environment cfg'
-    <$> readServices cfg'.services_file
-    <*> customExecParser (prefs showHelpOnEmpty) optsParser
+  let configFile = configDir <> "/config.yaml"
+  cfg <- readConfig configFile :: IO Configuration
+  if cfg.encryption == GRING
+    then do
+      uid <- getRealUserID
+      -- gnome needs this envvar set
+      setEnv "DBUS_SESSION_BUS_ADDRESS" ("unix:path=/run/user/" ++ show uid ++ "/bus")
+    else return ()
+  return
+    Environment
+      { oama_version = showVersion version
+      , op_sys = opsys
+      , data_dir = dataDir
+      , config_dir = configDir
+      , config = cfg {redirect_port = cfg.redirect_port <|> Just defaultPort}
+      , services = Map.fromList [("google", googleAPI), ("microsoft", microsoftAPI)]
+      , options = opts
+      }
 
-expandTilde :: FilePath -> FilePath -> FilePath
-expandTilde cpath homeDir =
-  if strStartsWith cpath "~"
-    then homeDir <> strDrop 1 cpath
-    else cpath
+pprintEnv :: Environment -> IO ()
+pprintEnv env = do
+  let envYaml = BSU.toString $ Yaml.encode $ env
+  putStrLn "###  Runtime environment  ###"
+  putStr envYaml
+  putStrLn "######"
 
-expandTilde_ :: Maybe FilePath -> FilePath -> Maybe FilePath
-expandTilde_ (Just cpath) homeDir = Just $ expandTilde cpath homeDir
-expandTilde_ Nothing _ = Nothing
+uname :: IO String
+uname = do
+  (x, o, e) <- Proc.readProcessWithExitCode "uname" ["-a"] ""
+  if x == ExitSuccess
+    then return o
+    else return $ "Unknown operating system.\n" <> e
+
+checkInit :: IO (String, String)
+checkInit = do
+  configDir <- Dir.getXdgDirectory Dir.XdgConfig "oama"
+  homeDir <- getEnv "HOME"
+  let dataDir = homeDir ++ "/.local/var/oama"
+  Dir.createDirectoryIfMissing True configDir
+  Dir.createDirectoryIfMissing True dataDir
+  let defaultConfigFile = configDir <> "/config.yaml"
+  cfgOK <- isFileReadable defaultConfigFile
+  if cfgOK
+    then return (configDir, dataDir)
+    else do
+      putStrLn $ "WARNING -- Could not find config file: " <> defaultConfigFile
+      putStrLn "Creating initial config file ..."
+      writeFile defaultConfigFile initialConfig
+      putStrLn "Edit it then start oama again."
+      exitFailure
 
 isFileReadable :: FilePath -> IO Bool
-isFileReadable file = do
-  Dir.doesFileExist file
-  >>= \case
-    True -> do
-      perms <- Dir.getPermissions file
-      return $ Dir.readable perms
-    False -> return False
+isFileReadable file =
+  do
+    Dir.doesFileExist file
+    >>= \case
+      True -> do
+        perms <- Dir.getPermissions file
+        return $ Dir.readable perms
+      False -> return False
 
 readConfig :: FilePath -> IO Configuration
 readConfig configFile = do
@@ -166,15 +251,14 @@ readConfig configFile = do
       putStrLn $ "Can't find/read configuration file: " <> configFile
       exitFailure
 
-readServices :: FilePath -> IO Services
-readServices servicesFile = do
-  readable <- isFileReadable servicesFile
-  if readable
-    then
-      (Yaml.decodeFileEither servicesFile :: IO (Either Yaml.ParseException Services))
-        >>= \case
-          Left err -> error $ Yaml.prettyPrintParseException err
-          Right ps -> return ps
-    else do
-      putStrLn $ "Can't find/read services file: " <> servicesFile
-      exitFailure
+credentialLookup :: Environment -> String -> (Credentials -> String) -> Maybe String
+credentialLookup env serv field =
+  case Map.lookup serv env.config.credentials of
+    Nothing -> Nothing
+    Just cred -> Just (field cred)
+
+getServiceAPI :: Environment -> String -> ServiceAPI
+getServiceAPI env serv = fromJust (Map.lookup serv env.services)
+
+logger :: Priority -> String -> IO ()
+logger pri msg = withCStringLen msg $ syslog Nothing pri

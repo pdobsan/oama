@@ -3,7 +3,6 @@ module Main where
 import OAMa.Authorization
 import OAMa.CommandLine
 import OAMa.Environment
-import OAMa.Utilities
 import System.Posix.Internals (c_umask)
 import System.Posix.Syslog (Facility (Mail), withSyslog)
 
