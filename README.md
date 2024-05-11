@@ -20,9 +20,12 @@ automatically in the background transparent to the user.
 
 ## Installation
 
-`oama` has not been officially released yet but it can be built from the
-recent main branch. Pre-compiled binaries will come (back) with the first
-release soon. 
+`oama` has not been officially released yet but it can be built from sources
+in the recent main branch.
+
+For the time being here is a pre-release
+[static binary](https://s3.sr.ht/builds.sr.ht/artifacts/~petrus/1217865/856d484afcb3c69e/oama.tar).
+
 
 ### Building from sources
 
