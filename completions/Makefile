@@ -1,14 +1,14 @@
 PROG = oama
 DEPS = ../lib/OAMa/CommandLine.hs
-LOCAL = ~/.local/share/zsh/site-functions/
+LOCAL = ~/.local/share/zsh/site-functions
 BIN_DIR = ~/.cabal/bin
 
 help:
 	@echo Posible targets:
 	@echo '  generate  -' generate completions for bash, zsh and fish shells
-	@echo '  local-zsh -' install complation $LOCAL/_$(PROG)
-	@echo '  uninstall -' remove $LOCAL/_$(PROG)
-	@echo '  clean     -' remove all completions
+	@echo '  local-zsh -' install $(LOCAL)/_$(PROG)
+	@echo '  uninstall -' remove $(LOCAL)/_$(PROG)
+	@echo '  clean     -' delete all completions
 	@echo '  clobber   -' clean and uninstall
 
 generate: $(PROG).bash $(PROG).zsh $(PROG).fish
