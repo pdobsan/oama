@@ -20,12 +20,17 @@ automatically in the background transparent to the user.
 
 ## Installation
 
-`oama` has not been officially released yet but it can be built from sources
-in the recent main branch.
+### Compiled static binaries
 
-For the time being here is a pre-release
-[static binary](https://s3.sr.ht/builds.sr.ht/artifacts/~petrus/1217865/856d484afcb3c69e/oama.tar).
+Each release contains compiled executables of `oama` which should work on
+most Linux distributions. Currently Linux/x86_64 and Linux/aarch64(arm64)
+binaries are provided. Select the version you want to download from
+[releases](https://github.com/pdobsan/oama/releases).
 
+#### Archlinux
+
+For Archlinux users there is also a package on AUR:
+[oama-bin](https://aur.archlinux.org/packages/oama-bin)
 
 ### Building from sources
 
@@ -46,10 +51,10 @@ That installs `oama` into the `~/.cabal/bin/` directory.
 
 ## Configuration
 
-`oama` version 0.3 or newer has a much simplified configuration system
-and comes also with other **breaking changes**. The only information you need
-to provide are `client_id` and `client_secret` and select the method of
-storing the oauth credentials. 
+`oama` version 0.10 has a much simplified configuration system and comes also
+with other **breaking changes**. The only information you need to provide are
+`client_id` and `client_secret` and select the method of storing the oauth
+credentials.
 
 If you used an earlier version of oama or `mailctl` you need to start
 from scratch. First uninstall `oama` or `mailctl` then remove all config and
