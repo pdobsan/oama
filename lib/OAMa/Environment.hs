@@ -26,6 +26,7 @@ module OAMa.Environment (
 ) where
 
 import Control.Applicative ((<|>))
+import Control.Monad (when)
 import Data.ByteString.UTF8 qualified as BSU
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -179,12 +180,10 @@ loadEnvironment = do
   opts <- customExecParser (prefs showHelpOnEmpty) optsParser
   let configFile = configDir <> "/config.yaml"
   cfg <- readConfig configFile :: IO Configuration
-  if cfg.encryption == GRING
-    then do
-      uid <- getRealUserID
-      -- gnome needs this envvar set
-      setEnv "DBUS_SESSION_BUS_ADDRESS" ("unix:path=/run/user/" ++ show uid ++ "/bus")
-    else return ()
+  when (cfg.encryption == GRING) $ do
+    uid <- getRealUserID
+    -- gnome needs this envvar set
+    setEnv "DBUS_SESSION_BUS_ADDRESS" ("unix:path=/run/user/" ++ show uid ++ "/bus")
   return
     Environment
       { oama_version = showVersion version
@@ -198,7 +197,7 @@ loadEnvironment = do
 
 pprintEnv :: Environment -> IO ()
 pprintEnv env = do
-  let envYaml = BSU.toString $ Yaml.encode $ env
+  let envYaml = BSU.toString $ Yaml.encode env
   putStrLn "###  Runtime environment  ###"
   putStr envYaml
   putStrLn "######"

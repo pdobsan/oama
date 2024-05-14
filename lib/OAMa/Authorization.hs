@@ -167,7 +167,7 @@ sendRequest env httpMethod paramsMode url params = do
   let params_ = filter (\(_, y) -> isJust y) params
   case paramsMode of
     RequestBody -> do
-      req <- parseRequest $ (show httpMethod) ++ " " ++ url
+      req <- parseRequest $ show httpMethod ++ " " ++ url
       let ps = [(x, y) | (x, Just y) <- params]
           mps = M.fromList ps
           req' = setRequestBodyJSON mps req
@@ -180,7 +180,7 @@ sendRequest env httpMethod paramsMode url params = do
           runPost req'
         else runPost req'
     RequestBodyForm -> do
-      req <- parseRequest $ (show httpMethod) ++ " " ++ url
+      req <- parseRequest $ show httpMethod ++ " " ++ url
       let ps = [bimap BSU.fromString (BSU.fromString . fromJust) x | x <- params_]
           req' = setRequestBodyURLEncoded ps req
       if optDebug $ options env
@@ -192,7 +192,7 @@ sendRequest env httpMethod paramsMode url params = do
           runPost req'
         else runPost req'
     QueryString -> do
-      req <- parseRequest $ (show httpMethod) ++ " " ++ url
+      req <- parseRequest $ show httpMethod ++ " " ++ url
       let ps = [bimap BSU.fromString (BSU.fromString <$>) x | x <- params_]
           req' = setRequestQueryString ps req
       if optDebug $ options env
@@ -286,10 +286,7 @@ getAccessToken env serv authcode = do
         , ("code", Just authcode)
         , ("grant_type", Just "authorization_code")
         , ("tenant", api.tenant)
-        ,
-          ( "redirect_uri"
-          , Just $ "http://localhost:" ++ (show $ fromJust env.config.redirect_port) ++ "/finish"
-          )
+        , ("redirect_uri", Just $ "http://localhost:" ++ show (fromJust env.config.redirect_port))
         ]
   fetchAuthRecord env api.token_http_method api.token_params_mode api.token_endpoint qs
 
@@ -300,10 +297,7 @@ generateAuthPage env serv email_ noHint = do
       api = getServiceAPI env serv
       qs =
         [ ("client_id", credentialLookup env serv client_id)
-        ,
-          ( "redirect_uri"
-          , Just $ "http://localhost:" ++ (show $ fromJust env.config.redirect_port) ++ "/finish"
-          )
+        , ("redirect_uri", Just $ "http://localhost:" ++ show (fromJust env.config.redirect_port))
         , ("response_type", Just "code")
         , ("scope", Just api.auth_scope)
         , ("login_hint", Just hint)
@@ -356,21 +350,24 @@ localWebServer mvar env serv email_ noHint = do
             routes =
               [ TW.get "/cas/login" casService
               , TW.get "/start" startAuth
-              , TW.get "/finish" finishAuth
+              , TW.get "/" finishAuth
               ]
 
             missing :: TW.ResponderM a
             missing = do
               req <- TW.request
-              liftIO $ printf "localWebServer - invalid request:\n"
-              pPrint req
-              let req' = TLE.encodeUtf8 $ pShowNoColor req
-              TW.send $
-                TW.html $
-                  "<h3>localWebServer - invalid request</h3>"
-                    <> "<pre>"
-                    <> req'
-                    <> "</pre>"
+              if req.rawPathInfo == "/favicon.ico"
+                then TW.send $ TW.html "missing favicon.ico"
+                else do
+                  liftIO $ printf "localWebServer - invalid request:\n"
+                  pPrint req
+                  let req' = TLE.encodeUtf8 $ pShowNoColor req
+                  TW.send $
+                    TW.html $
+                      "<h3>localWebServer - invalid request</h3>"
+                        <> "<pre>"
+                        <> req'
+                        <> "</pre>"
 
         Warp.runSettings localhostWebServer $ foldr ($) (TW.notFound missing) routes
 
@@ -399,7 +396,7 @@ authorizeEmail env servName email_ noHint = do
         "To grant OAuth2 access to "
           ++ unEmailAddress email_
           ++ " visit the local URL below with your browser."
-      putStrLn $ "http://localhost:" ++ (show $ fromJust env.config.redirect_port) ++ "/start"
+      putStrLn $ "http://localhost:" ++ show (fromJust env.config.redirect_port) ++ "/start"
       mvar <- newEmptyMVar
       _ <- forkIO $ localWebServer mvar env serv email_ noHint
       printf "Authorization started ... \n"
