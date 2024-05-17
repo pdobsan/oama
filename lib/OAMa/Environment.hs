@@ -13,13 +13,11 @@ module OAMa.Environment (
   Environment (..),
   ServiceAPI (..),
   Encryption (..),
-  Credentials (..),
   EmailAddress (..),
   HTTPMethod (..),
   ParamsMode (..),
   checkInit,
   loadEnvironment,
-  credentialLookup,
   getServiceAPI,
   pprintEnv,
   logger,
@@ -57,95 +55,95 @@ data HTTPMethod = POST | GET
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
 data ServiceAPI = ServiceAPI
-  { auth_endpoint :: String
-  , auth_http_method :: HTTPMethod
-  , auth_params_mode :: ParamsMode
-  , token_endpoint :: String
-  , token_http_method :: HTTPMethod
-  , token_params_mode :: ParamsMode
-  , auth_scope :: String
+  { auth_endpoint :: Maybe String
+  , auth_http_method :: Maybe HTTPMethod
+  , auth_params_mode :: Maybe ParamsMode
+  , token_endpoint :: Maybe String
+  , token_http_method :: Maybe HTTPMethod
+  , token_params_mode :: Maybe ParamsMode
+  , auth_scope :: Maybe String
   , tenant :: Maybe String
-  }
-  deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
-
-googleAPI :: ServiceAPI
-googleAPI =
-  ServiceAPI
-    { auth_endpoint = "https://accounts.google.com/o/oauth2/auth"
-    , auth_http_method = POST
-    , auth_params_mode = QueryString
-    , token_endpoint = "https://accounts.google.com/o/oauth2/token"
-    , token_http_method = POST
-    , token_params_mode = RequestBody
-    , auth_scope = "https://mail.google.com/"
-    , tenant = Nothing
-    }
-
-microsoftAPI :: ServiceAPI
-microsoftAPI =
-  ServiceAPI
-    { auth_endpoint = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
-    , auth_http_method = GET
-    , auth_params_mode = QueryString
-    , token_endpoint = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
-    , token_http_method = POST
-    , token_params_mode = RequestBodyForm
-    , auth_scope =
-        "https://outlook.office365.com/IMAP.AccessAsUser.All https://outlook.office365.com/SMTP.Send offline_access"
-    , tenant = Just "common"
-    }
-
-defaultPort :: Int
-defaultPort = 8080
-
-type Services = Map String ServiceAPI
-
-data Credentials = Credentials
-  { client_id :: String
+  , client_id :: String
   , client_secret :: String
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
+type Services = Map String ServiceAPI
+
+defaultServices :: Services
+defaultServices =
+  Map.fromList
+    [
+      ( "google"
+      , ServiceAPI
+          { auth_endpoint = Just "https://accounts.google.com/o/oauth2/auth"
+          , auth_http_method = Just POST
+          , auth_params_mode = Just QueryString
+          , token_endpoint = Just "https://accounts.google.com/o/oauth2/token"
+          , token_http_method = Just POST
+          , token_params_mode = Just RequestBody
+          , auth_scope = Just "https://mail.google.com/"
+          , tenant = Nothing
+          , client_id = "application-CLIENT-ID"
+          , client_secret = "application-CLIENT-SECRET"
+          }
+      )
+    ,
+      ( "microsoft"
+      , ServiceAPI
+          { auth_endpoint = Just "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+          , auth_http_method = Just GET
+          , auth_params_mode = Just QueryString
+          , token_endpoint = Just "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+          , token_http_method = Just POST
+          , token_params_mode = Just RequestBodyForm
+          , auth_scope =
+              Just $
+                "https://outlook.office365.com/IMAP.AccessAsUser.All "
+                  ++ "https://outlook.office365.com/SMTP.Send "
+                  ++ "offline_access"
+          , tenant = Just "common"
+          , client_id = "application-CLIENT-ID"
+          , client_secret = "application-CLIENT-SECRET"
+          }
+      )
+    ]
+
+{-|
+Update defaultServices with the values read from the config file. Merge fields
+of Maybe type with <|>, for other fields use the config's values.
+-}
+updateServices :: Configuration -> Services
+updateServices conf =
+  let servs = zip (Map.toList conf.services) (Map.toList defaultServices)
+   in -- x :: ((String, ServiceAPI), (String, ServiceAPI))
+      Map.fromList [(fst (snd x), updateServiceAPI (snd (fst x)) (snd (snd x))) | x <- servs]
+ where
+  updateServiceAPI :: ServiceAPI -> ServiceAPI -> ServiceAPI
+  updateServiceAPI cfg def =
+    ServiceAPI
+      { auth_endpoint = cfg.auth_endpoint <|> def.auth_endpoint
+      , auth_http_method = cfg.auth_http_method <|> def.auth_http_method
+      , auth_params_mode = cfg.auth_params_mode <|> def.auth_params_mode
+      , token_endpoint = cfg.token_endpoint <|> def.token_endpoint
+      , token_http_method = cfg.token_http_method <|> def.token_http_method
+      , token_params_mode = cfg.token_params_mode <|> def.token_params_mode
+      , auth_scope = cfg.auth_scope <|> def.auth_scope
+      , tenant = cfg.tenant <|> def.tenant
+      , client_id = cfg.client_id
+      , client_secret = cfg.client_secret
+      }
+
+defaultPort :: Int
+defaultPort = 8080
+
+-- | Structure of the configuration YAML file
 data Configuration = Configuration
   { encryption :: Encryption
   , redirect_port :: Maybe Int
-  , credentials :: Map String Credentials
+  , services :: Services
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
-
-initialConfig :: String
-initialConfig =
-  [s|
-# oama configuration
-
-## Possible options for keeping refresh and access tokens:
-## GPG - in a gpg encrypted file ~/.local/var/oama/<email-address>.oauth
-## GRING - in the default Gnome keyring
-##
-## Choose exactly one.
-
-encryption:
-    tag: GRING
-
-# encryption:
-#   tag: GPG
-#   contents: your-KEY-ID
-
-## It must be >= 1024
-# redirect_port: 8080
-
-## Possible service providers
-## - google
-## - microsoft
-## Use your own credentials or the ones of an opensource app (like thunderbird ...)
-credentials:
-  google:
-    client_id: application-CLIENT-ID 
-    client_secret: application-CLIENT-SECRET
-  # microsoft:
-  #   client_id: application-CLIENT-ID 
-  #   client_secret: application-CLIENT_SECRET
-|]
 
 data Environment = Environment
   { oama_version :: String
@@ -191,7 +189,7 @@ loadEnvironment = do
       , data_dir = dataDir
       , config_dir = configDir
       , config = cfg {redirect_port = cfg.redirect_port <|> Just defaultPort}
-      , services = Map.fromList [("google", googleAPI), ("microsoft", microsoftAPI)]
+      , services = updateServices cfg
       , options = opts
       }
 
@@ -250,14 +248,54 @@ readConfig configFile = do
       putStrLn $ "Can't find/read configuration file: " <> configFile
       exitFailure
 
-credentialLookup :: Environment -> String -> (Credentials -> String) -> Maybe String
-credentialLookup env serv field =
-  case Map.lookup serv env.config.credentials of
-    Nothing -> Nothing
-    Just cred -> Just (field cred)
-
 getServiceAPI :: Environment -> String -> ServiceAPI
 getServiceAPI env serv = fromJust (Map.lookup serv env.services)
 
 logger :: Priority -> String -> IO ()
 logger pri msg = withCStringLen msg $ syslog Nothing pri
+
+initialConfig :: String
+initialConfig =
+  "## oama version "
+    <> showVersion version
+    ++ [s|
+
+
+## This is a YAML configuration file, indentation matters.
+## Double ## indicates comments while single # default values.
+
+## Possible options for keeping refresh and access tokens:
+## GPG - in a gpg encrypted file ~/.local/var/oama/<email-address>.oauth
+## GRING - in the default Gnome keyring
+##
+## Choose exactly one.
+
+encryption:
+    tag: GRING
+
+# encryption:
+#   tag: GPG
+#   contents: your-KEY-ID
+
+## It must be >= 1024
+# redirect_port: 8080
+
+## Possible service providers
+## - google
+## - microsoft
+## The only required arguments are client_id and client_secret
+##
+services:
+  google:
+    client_id: application-CLIENT-ID 
+    client_secret: application-CLIENT-SECRET
+  #  auth_scope: https://mail.google.com/
+
+  # microsoft:
+  #   client_id: application-CLIENT-ID 
+  #   client_secret: application-CLIENT_SECRET
+  #   auth_scope: https://outlook.office365.com/IMAP.AccessAsUser.All
+  #     https://outlook.office365.com/SMTP.Send
+  #     offline_access
+  #   tenant: common
+|]

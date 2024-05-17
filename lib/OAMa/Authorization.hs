@@ -244,12 +244,17 @@ renewAccessToken _ _ Nothing = return $ Left "renewAccessToken: Nothing as refre
 renewAccessToken env (Just serv) rft = do
   let api = getServiceAPI env serv
       qs =
-        [ ("client_id", credentialLookup env serv client_id)
-        , ("client_secret", credentialLookup env serv client_secret)
+        [ ("client_id", Just api.client_id)
+        , ("client_secret", Just api.client_secret)
         , ("grant_type", Just "refresh_token")
         , ("refresh_token", rft)
         ]
-  fetchAuthRecord env api.token_http_method api.token_params_mode api.token_endpoint qs
+  fetchAuthRecord
+    env
+    (fromJust api.token_http_method)
+    (fromJust api.token_params_mode)
+    (fromJust api.token_endpoint)
+    qs
 
 forceRenew :: Environment -> EmailAddress -> IO ()
 forceRenew env email_ = do
@@ -281,14 +286,19 @@ getAccessToken :: Environment -> String -> String -> IO (Either String AuthRecor
 getAccessToken env serv authcode = do
   let api = getServiceAPI env serv
       qs =
-        [ ("client_id", credentialLookup env serv client_id)
-        , ("client_secret", credentialLookup env serv client_secret)
+        [ ("client_id", Just api.client_id)
+        , ("client_secret", Just api.client_secret)
         , ("code", Just authcode)
         , ("grant_type", Just "authorization_code")
         , ("tenant", api.tenant)
         , ("redirect_uri", Just $ "http://localhost:" ++ show (fromJust env.config.redirect_port))
         ]
-  fetchAuthRecord env api.token_http_method api.token_params_mode api.token_endpoint qs
+  fetchAuthRecord
+    env
+    (fromJust api.token_http_method)
+    (fromJust api.token_params_mode)
+    (fromJust api.token_endpoint)
+    qs
 
 generateAuthPage ::
   Environment -> String -> EmailAddress -> Bool -> IO (Either String BSU.ByteString)
@@ -296,14 +306,19 @@ generateAuthPage env serv email_ noHint = do
   let hint = if noHint then "dummy-email-address" else unEmailAddress email_
       api = getServiceAPI env serv
       qs =
-        [ ("client_id", credentialLookup env serv client_id)
+        [ ("client_id", Just api.client_id)
         , ("redirect_uri", Just $ "http://localhost:" ++ show (fromJust env.config.redirect_port))
         , ("response_type", Just "code")
-        , ("scope", Just api.auth_scope)
+        , ("scope", api.auth_scope)
         , ("login_hint", Just hint)
         -- ,("prompt", Just "consent")
         ]
-  sendRequest env api.auth_http_method api.auth_params_mode api.auth_endpoint qs
+  sendRequest
+    env
+    (fromJust api.auth_http_method)
+    (fromJust api.auth_params_mode)
+    (fromJust api.auth_endpoint)
+    qs
 
 data AuthResult = AuthSuccess | AuthFailure
 
@@ -379,7 +394,7 @@ makeAuthRecord env servName email_ =
       AuthRecord
         "access_token_palce_holder"
         1
-        serv.auth_scope
+        (fromJust serv.auth_scope)
         "Bearer"
         (Just "2000-01-01 12:00 UTC")
         (Just "refresh_token_place_holder")
