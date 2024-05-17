@@ -1,4 +1,4 @@
-# **oama** - OAuth credential Manager
+# **oama** - OAuth credential MAnager
 
 > [NOTE!]
 > `oama` is the successor of `mailctl`; for rationale and details, see
@@ -20,12 +20,13 @@ automatically in the background transparent to the user.
 
 ## Configuration
 
-`oama` has a simple configuration system.  The only information you need to
+`oama` has a simple configuration system.  The minimum information you need to
 provide are `client_id` and `client_secret` and select the method of storing the
 oauth credentials.
 
 When you run `oama` at the first time it will create the initial config file
-what you need to edit.
+what you need to edit. This YAML file is commented explaining your options, just
+follow the instructions there.
 
 
 ### Switching to `oama` from `mailctl`
@@ -144,8 +145,11 @@ That installs `oama` into the `~/.cabal/bin/` directory.
 ## Issues
 
 Please, report any problems, questions, suggestions regarding `oama` by opening
-an issue or by starting a discussion. For bug reports attach the error messages
-if any and the complete output of the `oama printenv` command.
+an issue or by starting a discussion.
+
+For bug reports attach the **complete output of the `oama printenv`** command.
+Do not remove lines, get confidential values redacted by replacing them with
+XXXXXX. Send also error messages and related syslog entries.
 
 ## License
 
