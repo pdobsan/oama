@@ -353,7 +353,7 @@ localWebServer mvar env serv email_ noHint = do
                         BLU.fromString $
                           printf "<h4>Received new refresh and access tokens for %s</h4>" (unEmailAddress email_)
                             <> if env.config.encryption == GRING
-                              then printf "<p>They have been stored in the Gome keyring.</p>"
+                              then printf "<p>They have been stored in the Gnome keyring.</p>"
                               else printf "<p>They have been saved in encrypted file.</p>"
 
             casService :: TW.ResponderM a
