@@ -22,6 +22,7 @@ data Opts = Opts
 
 data Command
   = Oauth2 String
+  | ShowCreds String
   | Renew String
   | Authorize String String Bool
   | PrintEnv
@@ -45,19 +46,24 @@ versionOption = do
   let verinfo =
         "oama version "
           <> showVersion version
-          <> "\nCopyright (C) Peter Dobsan 2024"
+          <> "\nCopyright (C) Peter Dobsan 2022-2024"
   infoOption verinfo (long "version" <> help "Show version")
 
 programOptions :: Parser Opts
 programOptions =
   Opts
     <$> switch (long "debug" <> help "Print HTTP traffic to stdout")
-    <*> hsubparser (oauth2 <> renew <> authorize <> printEnv)
+    <*> hsubparser (oauth2 <> showcreds <> renew <> authorize <> printEnv)
 
 oauth2 :: Mod CommandFields Command
 oauth2 = command "access" (info oauth2Options (progDesc "Get the access token for email"))
 oauth2Options :: Parser Command
 oauth2Options = Oauth2 <$> strArgument (metavar "<email>" <> help "Email address")
+
+showcreds :: Mod CommandFields Command
+showcreds = command "show" (info showcredsOptions (progDesc "Show current credentials for email"))
+showcredsOptions :: Parser Command
+showcredsOptions = ShowCreds <$> strArgument (metavar "<email>" <> help "Email address")
 
 renew :: Mod CommandFields Command
 renew = command "renew" (info renewOptions (progDesc "Renew the access token of email"))
@@ -74,4 +80,4 @@ authorizeOptions =
     <*> switch (long "nohint" <> help "Don't pass login hint")
 
 printEnv :: Mod CommandFields Command
-printEnv = command "printenv" (info (pure PrintEnv) (progDesc "Print the current Environment"))
+printEnv = command "printenv" (info (pure PrintEnv) (progDesc "Print the current runtime environment"))

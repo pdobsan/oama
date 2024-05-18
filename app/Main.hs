@@ -13,6 +13,7 @@ main = do
     env <- loadEnvironment
     case optCommand $ options env of
       Oauth2 emailAddress -> getEmailAuth env (EmailAddress emailAddress)
+      ShowCreds emailAddress -> showCreds env (EmailAddress emailAddress)
       Renew emailAddress -> forceRenew env (EmailAddress emailAddress)
       Authorize servName emailAddress nohint -> authorizeEmail env servName (EmailAddress emailAddress) nohint
       PrintEnv -> pprintEnv env

@@ -9,6 +9,7 @@ module OAMa.Authorization (
   authorizeEmail,
   getEmailAuth,
   forceRenew,
+  showCreds,
 ) where
 
 import Control.Concurrent
@@ -119,14 +120,29 @@ putAuthRecord env email_ rec = do
 timeStampFormat :: String
 timeStampFormat = "%Y-%m-%d %H:%M %Z"
 
--- Provide access_token while renewing it when necessary
-
+{-| Get access_token for then given email
+while renewing it when necessary
+-}
 getEmailAuth :: Environment -> EmailAddress -> IO ()
 getEmailAuth env email_ = do
   getEmailAuth' env email_
     >>= \case
       Right rec -> putStrLn $ access_token rec
       Left errmsg -> error $ "getEmailAuth:\n" ++ errmsg
+
+-- | Show current credentials for the given email
+showCreds :: Environment -> EmailAddress -> IO ()
+showCreds env email_ = do
+  getEmailAuth' env email_
+    >>= \case
+      Right rec -> do
+        printf "email: %s\n" (unEmailAddress $ fromJust rec.email)
+        printf "service: %s\n" (fromJust rec.service)
+        printf "scope: %s\n" rec.scope
+        printf "refresh_token: %s\n" (fromJust rec.refresh_token)
+        printf "access_token: %s\n" rec.access_token
+        printf "exp_date: %s\n" (fromJust rec.exp_date)
+      Left errmsg -> error $ "showCreds:\n" ++ errmsg
 
 getEmailAuth' :: Environment -> EmailAddress -> IO (Either String AuthRecord)
 getEmailAuth' env email_ = do
