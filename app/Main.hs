@@ -17,3 +17,4 @@ main = do
       Renew emailAddress -> forceRenew env (EmailAddress emailAddress)
       Authorize servName emailAddress nohint -> authorizeEmail env servName (EmailAddress emailAddress) nohint
       PrintEnv -> pprintEnv env
+      PrintTemplate -> printTemplate

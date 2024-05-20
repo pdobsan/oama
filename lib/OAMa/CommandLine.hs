@@ -15,7 +15,8 @@ import Options.Applicative
 import Paths_oama (version)
 
 data Opts = Opts
-  { optDebug :: !Bool
+  { optConfig :: !String
+  , optDebug :: !Bool
   , optCommand :: !Command
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
@@ -26,6 +27,7 @@ data Command
   | Renew String
   | Authorize String String Bool
   | PrintEnv
+  | PrintTemplate
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
 optsParser :: ParserInfo Opts
@@ -34,11 +36,11 @@ optsParser =
     (helper <*> versionOption <*> programOptions)
     ( fullDesc
         <> progDesc
-          ( "OAMa is an OAuth credential manager providing store/lookup, automatic renewal and authorization operations. "
+          ( "Oama is an OAuth credential manager providing store/lookup, automatic renewal and authorization operations. "
               ++ "The credentials are stored either in the Gnome keyring or in files encrypted by GnuPG. "
-              ++ "OAMa is useful for IMAP/SMTP or other network clients which cannot authorize and renew OAuth tokens on their own. "
+              ++ "Oama is useful for IMAP/SMTP or other network clients which cannot authorize and renew OAuth tokens on their own. "
           )
-        <> header "OAMa - OAuth credential manager with store/lookup, renewal, authorization."
+        <> header "oama - OAuth credential MAnager with store/lookup, renewal, authorization."
     )
 
 versionOption :: Parser (a -> a)
@@ -52,8 +54,16 @@ versionOption = do
 programOptions :: Parser Opts
 programOptions =
   Opts
-    <$> switch (long "debug" <> help "Print HTTP traffic to stdout")
-    <*> hsubparser (oauth2 <> showcreds <> renew <> authorize <> printEnv)
+    <$> strOption
+      ( long "config"
+          <> short 'c'
+          <> metavar "<config>"
+          <> value "~/.config/oama/config.yaml"
+          <> showDefault
+          <> help "Configuration file"
+      )
+    <*> switch (long "debug" <> help "Print HTTP traffic to stdout")
+    <*> hsubparser (oauth2 <> showcreds <> renew <> authorize <> printEnv <> printTemplate)
 
 oauth2 :: Mod CommandFields Command
 oauth2 = command "access" (info oauth2Options (progDesc "Get the access token for email"))
@@ -81,3 +91,6 @@ authorizeOptions =
 
 printEnv :: Mod CommandFields Command
 printEnv = command "printenv" (info (pure PrintEnv) (progDesc "Print the current runtime environment"))
+
+printTemplate :: Mod CommandFields Command
+printTemplate = command "template" (info (pure PrintTemplate) (progDesc "Print the default config template"))

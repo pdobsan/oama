@@ -20,6 +20,7 @@ module OAMa.Environment (
   loadEnvironment,
   getServiceAPI,
   pprintEnv,
+  printTemplate,
   logger,
 ) where
 
@@ -30,6 +31,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe
 import Data.String.QQ
+import Data.Strings (strDrop, strStartsWith)
 import Data.Time.Clock
 import Data.Version (showVersion)
 import Data.Yaml qualified as Yaml
@@ -149,7 +151,7 @@ data Environment = Environment
   { oama_version :: String
   , op_sys :: String
   , data_dir :: String
-  , config_dir :: String
+  , config_file :: String
   , config :: Configuration
   , services :: Services
   , options :: Opts
@@ -173,10 +175,14 @@ data AuthRecord = AuthRecord
 
 loadEnvironment :: IO Environment
 loadEnvironment = do
-  (configDir, dataDir) <- checkInit
-  opsys <- uname
+  (defaultConfigFile, dataDir) <- checkInit
   opts <- customExecParser (prefs showHelpOnEmpty) optsParser
-  let configFile = configDir <> "/config.yaml"
+  defaultOptsConfig <- expandTilde opts.optConfig
+  opsys <- uname
+  let configFile =
+        if defaultOptsConfig == defaultConfigFile
+          then defaultConfigFile
+          else defaultOptsConfig
   cfg <- readConfig configFile :: IO Configuration
   when (cfg.encryption == GRING) $ do
     uid <- getRealUserID
@@ -187,25 +193,18 @@ loadEnvironment = do
       { oama_version = showVersion version
       , op_sys = opsys
       , data_dir = dataDir
-      , config_dir = configDir
+      , config_file = configFile
       , config = cfg {redirect_port = cfg.redirect_port <|> Just defaultPort}
       , services = updateServices cfg
       , options = opts
       }
 
-pprintEnv :: Environment -> IO ()
-pprintEnv env = do
-  let envYaml = BSU.toString $ Yaml.encode env
-  putStrLn "###  Runtime environment  ###"
-  putStr envYaml
-  putStrLn "######"
-
-uname :: IO String
-uname = do
-  (x, o, e) <- Proc.readProcessWithExitCode "uname" ["-a"] ""
-  if x == ExitSuccess
-    then return o
-    else return $ "Unknown operating system.\n" <> e
+expandTilde :: FilePath -> IO FilePath
+expandTilde inpath = do
+  homeDir <- getEnv "HOME"
+  if strStartsWith inpath "~"
+    then return $ homeDir <> strDrop 1 inpath
+    else Dir.makeAbsolute inpath
 
 checkInit :: IO (String, String)
 checkInit = do
@@ -217,7 +216,7 @@ checkInit = do
   let defaultConfigFile = configDir <> "/config.yaml"
   cfgOK <- isFileReadable defaultConfigFile
   if cfgOK
-    then return (configDir, dataDir)
+    then return (defaultConfigFile, dataDir)
     else do
       putStrLn $ "WARNING -- Could not find config file: " <> defaultConfigFile
       putStrLn "Creating initial config file ..."
@@ -248,11 +247,28 @@ readConfig configFile = do
       putStrLn $ "Can't find/read configuration file: " <> configFile
       exitFailure
 
+pprintEnv :: Environment -> IO ()
+pprintEnv env = do
+  let envYaml = BSU.toString $ Yaml.encode env
+  putStrLn "###  Runtime environment  ###"
+  putStr envYaml
+  putStrLn "######"
+
+uname :: IO String
+uname = do
+  (x, o, e) <- Proc.readProcessWithExitCode "uname" ["-a"] ""
+  if x == ExitSuccess
+    then return o
+    else return $ "Unknown operating system.\n" <> e
+
 getServiceAPI :: Environment -> String -> ServiceAPI
 getServiceAPI env serv = fromJust (Map.lookup serv env.services)
 
 logger :: Priority -> String -> IO ()
 logger pri msg = withCStringLen msg $ syslog Nothing pri
+
+printTemplate :: IO ()
+printTemplate = putStr initialConfig
 
 initialConfig :: String
 initialConfig =
