@@ -77,8 +77,9 @@ getAuthRecord env email_ = do
             putStr e
             exitWith x
       else do
-        putStrLn $ "Can't find authorization record for " ++ unEmailAddress email_
-        putStrLn "You must run the 'authorize' command before using other operations."
+        printf "Can't find authorization record for %s\n" (unEmailAddress email_)
+        printf "You must run `oama authorize ...` before using other operations.\n"
+        logger Error $ printf "Can't find authorization record for %s\n" (unEmailAddress email_)
         exitFailure
 
 putAuthRecord :: Environment -> EmailAddress -> AuthRecord -> IO ()
@@ -137,11 +138,13 @@ showCreds env email_ = do
     >>= \case
       Right rec -> do
         printf "email: %s\n" (unEmailAddress $ fromJust rec.email)
-        printf "service: %s\n" (fromJust rec.service)
+        printf "service: %s\n" (fromMaybe "error - missing service" rec.service)
         printf "scope: %s\n" rec.scope
-        printf "refresh_token: %s\n" (fromJust rec.refresh_token)
+        printf "refresh_token: %s\n" (fromMaybe "error - missing refresh_token" rec.refresh_token)
         printf "access_token: %s\n" rec.access_token
-        printf "exp_date: %s\n" (fromJust rec.exp_date)
+        printf "token_type: %s\n" rec.token_type
+        printf "exp_date: %s\n" (fromMaybe "error - missing exp_date" rec.exp_date)
+      -- printf "expires_in: %s\n" $ show rec.expires_in
       Left errmsg -> error $ "showCreds:\n" ++ errmsg
 
 getEmailAuth' :: Environment -> EmailAddress -> IO (Either String AuthRecord)
@@ -258,8 +261,8 @@ renewAccessToken :: Environment -> Maybe String -> Maybe String -> IO (Either St
 renewAccessToken _ Nothing _ = return $ Left "renewAccessToken: Nothing as service string argument"
 renewAccessToken _ _ Nothing = return $ Left "renewAccessToken: Nothing as refresh token argument"
 renewAccessToken env (Just serv) rft = do
-  let api = getServiceAPI env serv
-      qs =
+  api <- getServiceAPI env serv
+  let qs =
         [ ("client_id", Just api.client_id)
         , ("client_secret", Just api.client_secret)
         , ("grant_type", Just "refresh_token")
@@ -267,6 +270,7 @@ renewAccessToken env (Just serv) rft = do
         ]
   fetchAuthRecord
     env
+    -- TODO: get rid of fromJust, lift failure into Left
     (fromJust api.token_http_method)
     (fromJust api.token_params_mode)
     (fromJust api.token_endpoint)
@@ -300,8 +304,8 @@ forceRenew env email_ = do
 
 getAccessToken :: Environment -> String -> String -> IO (Either String AuthRecord)
 getAccessToken env serv authcode = do
-  let api = getServiceAPI env serv
-      qs =
+  api <- getServiceAPI env serv
+  let qs =
         [ ("client_id", Just api.client_id)
         , ("client_secret", Just api.client_secret)
         , ("code", Just authcode)
@@ -319,8 +323,8 @@ getAccessToken env serv authcode = do
 generateAuthPage ::
   Environment -> String -> EmailAddress -> Bool -> IO (Either String BSU.ByteString)
 generateAuthPage env serv email_ noHint = do
+  api <- getServiceAPI env serv
   let hint = if noHint then "dummy-email-address" else unEmailAddress email_
-      api = getServiceAPI env serv
       qs =
         [ ("client_id", Just api.client_id)
         , ("redirect_uri", Just $ "http://localhost:" ++ show (fromJust env.config.redirect_port))
@@ -404,20 +408,22 @@ localWebServer mvar env serv email_ noHint = do
 
         Warp.runSettings localhostWebServer $ foldr ($) (TW.notFound missing) routes
 
+-- TODO: either return Either String AuthRecord or
+-- catch the exception raised by error in the caller (authorizeEmail)
 makeAuthRecord :: Environment -> String -> EmailAddress -> AuthRecord
 makeAuthRecord env servName email_ =
   case M.lookup servName env.services of
-    Nothing -> error $ "Can't find such service: " ++ servName
+    Nothing -> error $ "makeAuthRecord: Can't find such service: " ++ servName
     Just serv ->
       AuthRecord
-        "access_token_palce_holder"
-        1
-        (fromJust serv.auth_scope)
-        "Bearer"
-        (Just "2000-01-01 12:00 UTC")
-        (Just "refresh_token_place_holder")
         (Just email_)
         (Just servName)
+        (fromJust serv.auth_scope)
+        (Just "refresh_token_place_holder")
+        "access_token_palce_holder"
+        "Bearer"
+        (Just "2000-01-01 12:00 UTC")
+        1
 
 authorizeEmail :: Environment -> String -> EmailAddress -> Bool -> IO ()
 authorizeEmail env servName email_ noHint = do

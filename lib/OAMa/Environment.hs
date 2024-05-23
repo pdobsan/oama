@@ -28,8 +28,7 @@ import Control.Applicative ((<|>))
 import Control.Monad (when)
 import Data.ByteString.UTF8 qualified as BSU
 import Data.Map (Map)
-import Data.Map qualified as Map
-import Data.Maybe
+import Data.Map.Strict qualified as Map
 import Data.String.QQ
 import Data.Strings (strDrop, strStartsWith)
 import Data.Time.Clock
@@ -44,6 +43,7 @@ import System.Environment (getEnv, setEnv)
 import System.Exit (ExitCode (ExitSuccess), exitFailure)
 import System.Posix.User (getRealUserID)
 import System.Process qualified as Proc
+import Text.Printf
 
 import Foreign.C.String
 import System.Posix.Syslog (Priority (..), syslog)
@@ -70,35 +70,42 @@ data ServiceAPI = ServiceAPI
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
+defaultServiceAPI :: ServiceAPI
+defaultServiceAPI =
+  ServiceAPI
+    { auth_endpoint = Nothing
+    , auth_http_method = Just POST
+    , auth_params_mode = Just QueryString
+    , token_endpoint = Nothing
+    , token_http_method = Just POST
+    , token_params_mode = Just RequestBody
+    , auth_scope = Nothing
+    , tenant = Nothing
+    , client_id = "application-CLIENT-ID"
+    , client_secret = "application-CLIENT-SECRET"
+    }
+
 type Services = Map String ServiceAPI
 
-defaultServices :: Services
-defaultServices =
+builtinServices :: Services
+builtinServices =
   Map.fromList
     [
       ( "google"
-      , ServiceAPI
+      , defaultServiceAPI
           { auth_endpoint = Just "https://accounts.google.com/o/oauth2/auth"
-          , auth_http_method = Just POST
-          , auth_params_mode = Just QueryString
           , token_endpoint = Just "https://accounts.google.com/o/oauth2/token"
-          , token_http_method = Just POST
-          , token_params_mode = Just RequestBody
           , auth_scope = Just "https://mail.google.com/"
-          , tenant = Nothing
           , client_id = "application-CLIENT-ID"
           , client_secret = "application-CLIENT-SECRET"
           }
       )
     ,
       ( "microsoft"
-      , ServiceAPI
+      , defaultServiceAPI
           { auth_endpoint = Just "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
           , auth_http_method = Just GET
-          , auth_params_mode = Just QueryString
           , token_endpoint = Just "https://login.microsoftonline.com/common/oauth2/v2.0/token"
-          , token_http_method = Just POST
-          , token_params_mode = Just RequestBodyForm
           , auth_scope =
               Just $
                 "https://outlook.office365.com/IMAP.AccessAsUser.All "
@@ -110,31 +117,6 @@ defaultServices =
           }
       )
     ]
-
-{-|
-Update defaultServices with the values read from the config file. Merge fields
-of Maybe type with <|>, for other fields use the config's values.
--}
-updateServices :: Configuration -> Services
-updateServices conf =
-  let servs = zip (Map.toList conf.services) (Map.toList defaultServices)
-   in -- x :: ((String, ServiceAPI), (String, ServiceAPI))
-      Map.fromList [(fst (snd x), updateServiceAPI (snd (fst x)) (snd (snd x))) | x <- servs]
- where
-  updateServiceAPI :: ServiceAPI -> ServiceAPI -> ServiceAPI
-  updateServiceAPI cfg def =
-    ServiceAPI
-      { auth_endpoint = cfg.auth_endpoint <|> def.auth_endpoint
-      , auth_http_method = cfg.auth_http_method <|> def.auth_http_method
-      , auth_params_mode = cfg.auth_params_mode <|> def.auth_params_mode
-      , token_endpoint = cfg.token_endpoint <|> def.token_endpoint
-      , token_http_method = cfg.token_http_method <|> def.token_http_method
-      , token_params_mode = cfg.token_params_mode <|> def.token_params_mode
-      , auth_scope = cfg.auth_scope <|> def.auth_scope
-      , tenant = cfg.tenant <|> def.tenant
-      , client_id = cfg.client_id
-      , client_secret = cfg.client_secret
-      }
 
 defaultPort :: Int
 defaultPort = 8080
@@ -162,16 +144,48 @@ newtype EmailAddress = EmailAddress {unEmailAddress :: String}
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
 data AuthRecord = AuthRecord
-  { access_token :: String
-  , expires_in :: NominalDiffTime
+  { email :: Maybe EmailAddress
+  , service :: Maybe String
   , scope :: String
+  , refresh_token :: Maybe String
+  , access_token :: String
   , token_type :: String
   , exp_date :: Maybe String
-  , refresh_token :: Maybe String
-  , email :: Maybe EmailAddress
-  , service :: Maybe String
+  , expires_in :: NominalDiffTime
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
+
+{-|
+Update defaultServiceAPI with the values read from the config file. Merge fields
+of Maybe type with Applicative.(<|>) (short circuting on config values), for
+other fields use the config's values.
+Return the new merged ServiceAPI record.
+-}
+updateServiceAPI :: ServiceAPI -> ServiceAPI -> ServiceAPI
+updateServiceAPI def cfg =
+  ServiceAPI
+    { auth_endpoint = cfg.auth_endpoint <|> def.auth_endpoint
+    , auth_http_method = cfg.auth_http_method <|> def.auth_http_method
+    , auth_params_mode = cfg.auth_params_mode <|> def.auth_params_mode
+    , token_endpoint = cfg.token_endpoint <|> def.token_endpoint
+    , token_http_method = cfg.token_http_method <|> def.token_http_method
+    , token_params_mode = cfg.token_params_mode <|> def.token_params_mode
+    , auth_scope = cfg.auth_scope <|> def.auth_scope
+    , tenant = cfg.tenant <|> def.tenant
+    , client_id = cfg.client_id
+    , client_secret = cfg.client_secret
+    }
+
+getConfiguredServices :: Configuration -> Services
+getConfiguredServices conf =
+  let cfgServers = Map.toList conf.services
+      cfgBuiltins = [(name, Map.lookup name builtinServices) | (name, _) <- cfgServers]
+      mergedServers = zipWith update cfgServers cfgBuiltins
+   in Map.fromList mergedServers
+ where
+  update :: (String, ServiceAPI) -> (String, Maybe ServiceAPI) -> (String, ServiceAPI)
+  update (name, configured) (_, Just builtin) = (name, updateServiceAPI builtin configured)
+  update (name, configured) (_, Nothing) = (name, updateServiceAPI defaultServiceAPI configured)
 
 loadEnvironment :: IO Environment
 loadEnvironment = do
@@ -195,7 +209,7 @@ loadEnvironment = do
       , data_dir = dataDir
       , config_file = configFile
       , config = cfg {redirect_port = cfg.redirect_port <|> Just defaultPort}
-      , services = updateServices cfg
+      , services = getConfiguredServices cfg
       , options = opts
       }
 
@@ -218,9 +232,13 @@ checkInit = do
   if cfgOK
     then return (defaultConfigFile, dataDir)
     else do
-      putStrLn $ "WARNING -- Could not find config file: " <> defaultConfigFile
-      putStrLn "Creating initial config file ..."
+      printf "WARNING -- Could not find config file: %s\n" defaultConfigFile
+      printf "Creating initial config file ...\n"
+      logger Warning $ printf "WARNING -- Could not find config file: %s\n" defaultConfigFile
+      logger Warning $ printf "Creating initial config file ...\n"
       writeFile defaultConfigFile initialConfig
+      printf "... done.\n"
+      logger Warning $ printf "... done.\n"
       putStrLn "Edit it then start oama again."
       exitFailure
 
@@ -244,7 +262,8 @@ readConfig configFile = do
           Left err -> error $ Yaml.prettyPrintParseException err
           Right cfg -> return cfg
     else do
-      putStrLn $ "Can't find/read configuration file: " <> configFile
+      printf "Can't find/read configuration file: %s\n" configFile
+      logger Error $ printf "Can't find/read configuration file: %s\n" configFile
       exitFailure
 
 pprintEnv :: Environment -> IO ()
@@ -261,8 +280,16 @@ uname = do
     then return o
     else return $ "Unknown operating system.\n" <> e
 
-getServiceAPI :: Environment -> String -> ServiceAPI
-getServiceAPI env serv = fromJust (Map.lookup serv env.services)
+getServiceAPI :: Environment -> String -> IO ServiceAPI
+getServiceAPI env serv = foo (Map.lookup serv env.services)
+ where
+  foo :: Maybe ServiceAPI -> IO ServiceAPI
+  foo (Just servapi) = return servapi
+  foo Nothing = do
+    printf "ERROR - No service named '%s' is configured.\n" serv
+    printf "        Run`oama printenv` and check its output.\n"
+    logger Error $ printf "ERROR - No service named '%s' is configured.\n" serv
+    exitFailure
 
 logger :: Priority -> String -> IO ()
 logger pri msg = withCStringLen msg $ syslog Nothing pri
@@ -279,6 +306,8 @@ initialConfig =
 
 ## This is a YAML configuration file, indentation matters.
 ## Double ## indicates comments while single # default values.
+## Not all defaults are shown, for full list run `oama printenv`
+## and look at the `services:` section.
 
 ## Possible options for keeping refresh and access tokens:
 ## GPG - in a gpg encrypted file ~/.local/var/oama/<email-address>.oauth
@@ -296,10 +325,10 @@ encryption:
 ## It must be >= 1024
 # redirect_port: 8080
 
-## Possible service providers
+## Builtin service providers
 ## - google
 ## - microsoft
-## The only required arguments are client_id and client_secret
+## Required fields: client_id, client_secret
 ##
 services:
   google:
@@ -314,4 +343,15 @@ services:
   #     https://outlook.office365.com/SMTP.Send
   #     offline_access
   #   tenant: common
+
+  ## User configured providers
+  ## Required fields: client_id, client_secret, auth_endpoint, auth_scope, token_endpoint  
+  ##
+  ## For example:
+  # yahoo:
+  #   client_id: application-CLIENT-ID 
+  #   client_secret: application-CLIENT_SECRET
+  #   auth_endpoint: EDIT-ME!
+  #   auth_scope: EDIT-ME!
+  #   token_endpoint: EDIT-ME!
 |]

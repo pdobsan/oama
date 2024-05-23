@@ -61,13 +61,22 @@ process.
 
 ## Configuration
 
-`oama` has a simple configuration system.  The minimum information you need to
-provide are `client_id` and `client_secret` and select the method of storing the
-oauth credentials.
+`oama` has a simple configuration system. When you run `oama` at the first time
+it will create the initial config file what you need to edit. This YAML file is
+commented explaining your options, just follow the instructions there.
 
-When you run `oama` at the first time it will create the initial config file
-what you need to edit. This YAML file is commented explaining your options, just
-follow the instructions there.
+First select the method of storing the OAuth credentials. Then configure the
+services you are going to use. There are two kinds of services the *builtin*
+ones which `oama` already knows and the *user configured* ones. The current
+*builtin* services are `google` and `microsoft`.
+
+For a *builtin* service the minimum information you need to provide are
+`client_id` and `client_secret`. For *user configured* service there are a few
+more required config options. See the initially created config file for more
+details.
+
+You can see all the configurable options in the `services:` section of the
+output of the `oama printenv` command.
 
 ### Authorization for Corporate/Organizational/Institutional accounts
 
@@ -139,9 +148,21 @@ That installs `oama` into the `~/.cabal/bin/` directory.
 Please, report any problems, questions, suggestions regarding `oama` by opening
 an issue or by starting a discussion.
 
-For bug reports attach the **complete output of the `oama printenv`** command.
-Do not remove lines, get confidential values redacted by replacing them with
-XXXXXX. Send also error messages and related syslog entries.
+### Guidelines for opening an issue
+
+- Make sure that you are using the latest version of `oama`.
+
+- Before opening an issue search old issues (both open and closed) and check whether 
+  similar problems have been raised or solved before.
+
+- Attach the **complete output of the `oama printenv`** command. Do not remove
+  lines, get confidential values redacted by replacing them with XXXXXX.
+  Indicate what kind of `client_id/secret` you are using.
+
+- Send also full error messages and related syslog entries. Even when `oama` was called
+  by another program which could have hidden its error messages you might see them in the syslog.
+
+Not following these guidelines may result in your issue being ignored or get just closed.
 
 ## License
 
