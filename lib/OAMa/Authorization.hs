@@ -14,7 +14,7 @@ module OAMa.Authorization (
 
 import Control.Concurrent
 import Control.Exception (try)
-import Control.Monad.IO.Class
+import Control.Monad.Reader
 import Data.Aeson (eitherDecode', eitherDecodeStrict, encode)
 import Data.Bifunctor (bimap)
 import Data.ByteString.Lazy (fromStrict)
@@ -22,12 +22,14 @@ import Data.ByteString.Lazy.UTF8 qualified as BLU
 import Data.ByteString.UTF8 qualified as BSU
 import Data.Map qualified as M
 import Data.Maybe (fromJust, fromMaybe, isJust)
+import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text.Lazy.Encoding qualified as TLE
 import Data.Time.Clock
 import Data.Time.Format
 import Network.HTTP.Conduit
 import Network.HTTP.Simple
+import Network.URI qualified as URI
 import Network.Wai.Handler.Warp qualified as Warp
 import OAMa.CommandLine
 import OAMa.Environment
@@ -36,8 +38,8 @@ import System.Exit (ExitCode (ExitSuccess), exitFailure, exitWith)
 import System.IO qualified as IO
 import System.Posix.Syslog (Priority (..))
 import System.Process qualified as P
-import Text.Pretty.Simple
-import Text.Printf
+import Text.Pretty.Simple (pPrint, pShowNoColor)
+import Text.Printf (printf)
 import Web.Twain qualified as TW
 
 -- The OAuth2 authorization flow's implementation is based on these docs:
@@ -130,22 +132,6 @@ getEmailAuth env email_ = do
     >>= \case
       Right rec -> putStrLn $ access_token rec
       Left errmsg -> error $ "getEmailAuth:\n" ++ errmsg
-
--- | Show current credentials for the given email
-showCreds :: Environment -> EmailAddress -> IO ()
-showCreds env email_ = do
-  getEmailAuth' env email_
-    >>= \case
-      Right rec -> do
-        printf "email: %s\n" (unEmailAddress $ fromJust rec.email)
-        printf "service: %s\n" (fromMaybe "error - missing service" rec.service)
-        printf "scope: %s\n" rec.scope
-        printf "refresh_token: %s\n" (fromMaybe "error - missing refresh_token" rec.refresh_token)
-        printf "access_token: %s\n" rec.access_token
-        printf "token_type: %s\n" rec.token_type
-        printf "exp_date: %s\n" (fromMaybe "error - missing exp_date" rec.exp_date)
-      -- printf "expires_in: %s\n" $ show rec.expires_in
-      Left errmsg -> error $ "showCreds:\n" ++ errmsg
 
 getEmailAuth' :: Environment -> EmailAddress -> IO (Either String AuthRecord)
 getEmailAuth' env email_ = do
@@ -270,7 +256,6 @@ renewAccessToken env (Just serv) rft = do
         ]
   fetchAuthRecord
     env
-    -- TODO: get rid of fromJust, lift failure into Left
     (fromJust api.token_http_method)
     (fromJust api.token_params_mode)
     (fromJust api.token_endpoint)
@@ -300,6 +285,22 @@ forceRenew env email_ = do
         logger Notice $ printf "new access token for %s - expires at %s" (unEmailAddress email_) expDate
         printf "Obtained new access token for %s - expires at %s.\n" (unEmailAddress email_) expDate
 
+-- | Show current credentials for the given email
+showCreds :: Environment -> EmailAddress -> IO ()
+showCreds env email_ = do
+  getEmailAuth' env email_
+    >>= \case
+      Right rec -> do
+        printf "email: %s\n" (unEmailAddress $ fromJust rec.email)
+        printf "service: %s\n" (fromMaybe "error - missing service" rec.service)
+        printf "scope: %s\n" rec.scope
+        printf "refresh_token: %s\n" (fromMaybe "error - missing refresh_token" rec.refresh_token)
+        printf "access_token: %s\n" rec.access_token
+        printf "token_type: %s\n" rec.token_type
+        printf "exp_date: %s\n" (fromMaybe "error - missing exp_date" rec.exp_date)
+      -- printf "expires_in: %s\n" $ show rec.expires_in
+      Left errmsg -> error $ "showCreds:\n" ++ errmsg
+
 -- initial registration for authorization credentials
 
 getAccessToken :: Environment -> String -> String -> IO (Either String AuthRecord)
@@ -311,7 +312,7 @@ getAccessToken env serv authcode = do
         , ("code", Just authcode)
         , ("grant_type", Just "authorization_code")
         , ("tenant", api.tenant)
-        , ("redirect_uri", Just $ "http://localhost:" ++ show (fromJust env.config.redirect_port))
+        , ("redirect_uri", api.redirect_uri)
         ]
   fetchAuthRecord
     env
@@ -327,7 +328,7 @@ generateAuthPage env serv email_ noHint = do
   let hint = if noHint then "dummy-email-address" else unEmailAddress email_
       qs =
         [ ("client_id", Just api.client_id)
-        , ("redirect_uri", Just $ "http://localhost:" ++ show (fromJust env.config.redirect_port))
+        , ("redirect_uri", api.redirect_uri)
         , ("response_type", Just "code")
         , ("scope", api.auth_scope)
         , ("login_hint", Just hint)
@@ -342,8 +343,31 @@ generateAuthPage env serv email_ noHint = do
 
 data AuthResult = AuthSuccess | AuthFailure
 
-localWebServer :: MVar AuthResult -> Environment -> String -> EmailAddress -> Bool -> IO ()
-localWebServer mvar env serv email_ noHint = do
+getHostandPort :: ServiceAPI -> (String, Int, String)
+getHostandPort api =
+  -- to understand this ugliness
+  -- see https://hackage.haskell.org/package/network-uri
+  let ruri = fromJust $ URI.parseURI (fromJust api.redirect_uri)
+      ruria = URI.uriAuthority ruri
+      rurihost = URI.uriRegName $ fromJust ruria
+      ruriport = URI.uriPort $ fromJust ruria
+      portnum = read (drop 1 ruriport) :: Int
+      routepath = URI.uriPath $ fromJust $ URI.parseURI (fromJust api.redirect_uri)
+   in (rurihost, portnum, routepath)
+
+localWebServer ::
+  MVar AuthResult
+  -> Environment
+  -> String
+  -> Int
+  -> String
+  -> String
+  -> EmailAddress
+  -> Bool
+  -> IO ()
+-- @? instead of including rurihost and portnum as additional parameters
+-- perhaps using the Reader monad and extending the Environment would be better
+localWebServer mvar env rurihost portnum routepath serv email_ noHint = do
   generateAuthPage env serv email_ noHint
     >>= \case
       Left errmsg -> error $ "localWebServer:\n" ++ errmsg
@@ -351,8 +375,7 @@ localWebServer mvar env serv email_ noHint = do
         let startAuth :: TW.ResponderM a
             startAuth = TW.send $ TW.html $ fromStrict authP
             localhostWebServer =
-              Warp.setPort (fromJust env.config.redirect_port) $
-                Warp.setHost "localhost" Warp.defaultSettings
+              Warp.setPort portnum $ Warp.setHost (fromString rurihost) Warp.defaultSettings
             finishAuth :: TW.ResponderM a
             finishAuth = do
               code :: String <- TW.param "code"
@@ -387,7 +410,7 @@ localWebServer mvar env serv email_ noHint = do
             routes =
               [ TW.get "/cas/login" casService
               , TW.get "/start" startAuth
-              , TW.get "/" finishAuth
+              , TW.get (fromString routepath) finishAuth
               ]
 
             missing :: TW.ResponderM a
@@ -408,40 +431,29 @@ localWebServer mvar env serv email_ noHint = do
 
         Warp.runSettings localhostWebServer $ foldr ($) (TW.notFound missing) routes
 
--- TODO: either return Either String AuthRecord or
--- catch the exception raised by error in the caller (authorizeEmail)
-makeAuthRecord :: Environment -> String -> EmailAddress -> AuthRecord
-makeAuthRecord env servName email_ =
-  case M.lookup servName env.services of
-    Nothing -> error $ "makeAuthRecord: Can't find such service: " ++ servName
-    Just serv ->
-      AuthRecord
-        (Just email_)
-        (Just servName)
-        (fromJust serv.auth_scope)
-        (Just "refresh_token_place_holder")
-        "access_token_palce_holder"
-        "Bearer"
-        (Just "2000-01-01 12:00 UTC")
-        1
-
+-- when this function is called we always start from scratch
 authorizeEmail :: Environment -> String -> EmailAddress -> Bool -> IO ()
 authorizeEmail env servName email_ noHint = do
-  -- when this function is called we always start from scratch
-  case service (makeAuthRecord env servName email_) of
-    Nothing -> error "authorizeEmail: missing service field in AuthRecord."
-    Just serv -> do
-      putStrLn $
-        "To grant OAuth2 access to "
-          ++ unEmailAddress email_
-          ++ " visit the local URL below with your browser."
-      putStrLn $ "http://localhost:" ++ show (fromJust env.config.redirect_port) ++ "/start"
+  case M.lookup servName env.services of
+    Nothing -> error $ "authorizeEmail: Can't find such service: " ++ servName
+    Just api -> do
+      let (hostname, portnumber, routepath) = getHostandPort api
       mvar <- newEmptyMVar
-      _ <- forkIO $ localWebServer mvar env serv email_ noHint
-      printf "Authorization started ... \n"
+      _ <- forkIO $ localWebServer mvar env hostname portnumber routepath servName email_ noHint
+      printf
+        "Authorization to grant OAuth2 access to %s started ... \n"
+        (unEmailAddress email_)
+      printf "Visit http://%s:%d/start in your browser ...\n" hostname portnumber
       takeMVar mvar
         >>= \case
-          AuthSuccess -> printf "Received tokens for %s.\n" (unEmailAddress email_)
-          AuthFailure -> printf "Authorization failed.\n"
+          AuthSuccess -> do
+            printf "Received refresh and access tokens ...\n"
+            if env.config.encryption == GRING
+              then printf "They have been stored in the Gome keyring ...\n"
+              else
+                printf
+                  "They have been saved in %s encrypted ...\n"
+                  (env.data_dir <> "/" <> email_.unEmailAddress <> ".oama")
+          AuthFailure -> printf "ERROR - Authorization failed.\n"
       threadDelay 5_000_000
       printf "... done.\n"

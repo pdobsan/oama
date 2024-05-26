@@ -64,11 +64,15 @@ data ServiceAPI = ServiceAPI
   , token_http_method :: Maybe HTTPMethod
   , token_params_mode :: Maybe ParamsMode
   , auth_scope :: Maybe String
+  , redirect_uri :: Maybe String
   , tenant :: Maybe String
   , client_id :: String
   , client_secret :: String
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
+
+defualtRedirectURI :: String
+defualtRedirectURI = "http://localhost:8080"
 
 defaultServiceAPI :: ServiceAPI
 defaultServiceAPI =
@@ -80,6 +84,7 @@ defaultServiceAPI =
     , token_http_method = Just POST
     , token_params_mode = Just RequestBody
     , auth_scope = Nothing
+    , redirect_uri = Just defualtRedirectURI
     , tenant = Nothing
     , client_id = "application-CLIENT-ID"
     , client_secret = "application-CLIENT-SECRET"
@@ -118,13 +123,12 @@ builtinServices =
       )
     ]
 
-defaultPort :: Int
-defaultPort = 8080
+-- defaultPort :: Int
+-- defaultPort = 8080
 
 -- | Structure of the configuration YAML file
 data Configuration = Configuration
   { encryption :: Encryption
-  , redirect_port :: Maybe Int
   , services :: Services
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
@@ -171,6 +175,7 @@ updateServiceAPI def cfg =
     , token_http_method = cfg.token_http_method <|> def.token_http_method
     , token_params_mode = cfg.token_params_mode <|> def.token_params_mode
     , auth_scope = cfg.auth_scope <|> def.auth_scope
+    , redirect_uri = cfg.redirect_uri <|> def.redirect_uri
     , tenant = cfg.tenant <|> def.tenant
     , client_id = cfg.client_id
     , client_secret = cfg.client_secret
@@ -208,7 +213,7 @@ loadEnvironment = do
       , op_sys = opsys
       , data_dir = dataDir
       , config_file = configFile
-      , config = cfg {redirect_port = cfg.redirect_port <|> Just defaultPort}
+      , config = cfg
       , services = getConfiguredServices cfg
       , options = opts
       }
@@ -322,9 +327,6 @@ encryption:
 #   tag: GPG
 #   contents: your-KEY-ID
 
-## It must be >= 1024
-# redirect_port: 8080
-
 ## Builtin service providers
 ## - google
 ## - microsoft
@@ -335,6 +337,7 @@ services:
     client_id: application-CLIENT-ID 
     client_secret: application-CLIENT-SECRET
   #  auth_scope: https://mail.google.com/
+  #   redirect_uri: http://localhost:8080
 
   # microsoft:
   #   client_id: application-CLIENT-ID 
@@ -342,6 +345,7 @@ services:
   #   auth_scope: https://outlook.office365.com/IMAP.AccessAsUser.All
   #     https://outlook.office365.com/SMTP.Send
   #     offline_access
+  #   redirect_uri: http://localhost:8080
   #   tenant: common
 
   ## User configured providers
@@ -354,4 +358,5 @@ services:
   #   auth_endpoint: EDIT-ME!
   #   auth_scope: EDIT-ME!
   #   token_endpoint: EDIT-ME!
+  #   redirect_uri: http://localhost:8080
 |]
