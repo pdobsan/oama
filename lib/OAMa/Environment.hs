@@ -71,8 +71,8 @@ data ServiceAPI = ServiceAPI
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
-defualtRedirectURI :: String
-defualtRedirectURI = "http://localhost:8080"
+-- defualtRedirectURI :: String
+-- defualtRedirectURI = "http://localhost:8080"
 
 defaultServiceAPI :: ServiceAPI
 defaultServiceAPI =
@@ -84,7 +84,7 @@ defaultServiceAPI =
     , token_http_method = Just POST
     , token_params_mode = Just RequestBody
     , auth_scope = Nothing
-    , redirect_uri = Just defualtRedirectURI
+    , redirect_uri = Nothing
     , tenant = Nothing
     , client_id = "application-CLIENT-ID"
     , client_secret = "application-CLIENT-SECRET"
@@ -112,10 +112,11 @@ builtinServices =
           , auth_http_method = Just GET
           , token_endpoint = Just "https://login.microsoftonline.com/common/oauth2/v2.0/token"
           , auth_scope =
-              Just $
-                "https://outlook.office365.com/IMAP.AccessAsUser.All "
-                  ++ "https://outlook.office365.com/SMTP.Send "
-                  ++ "offline_access"
+              Just
+                ( "https://outlook.ojffice365.com/IMAP.AccessAsUser.All "
+                    ++ "https://outlook.office365.com/SMTP.Send "
+                    ++ "offline_access"
+                )
           , tenant = Just "common"
           , client_id = "application-CLIENT-ID"
           , client_secret = "application-CLIENT-SECRET"
@@ -337,7 +338,6 @@ services:
     client_id: application-CLIENT-ID 
     client_secret: application-CLIENT-SECRET
   #  auth_scope: https://mail.google.com/
-  #   redirect_uri: http://localhost:8080
 
   # microsoft:
   #   client_id: application-CLIENT-ID 
@@ -345,7 +345,6 @@ services:
   #   auth_scope: https://outlook.office365.com/IMAP.AccessAsUser.All
   #     https://outlook.office365.com/SMTP.Send
   #     offline_access
-  #   redirect_uri: http://localhost:8080
   #   tenant: common
 
   ## User configured providers
@@ -358,5 +357,4 @@ services:
   #   auth_endpoint: EDIT-ME!
   #   auth_scope: EDIT-ME!
   #   token_endpoint: EDIT-ME!
-  #   redirect_uri: http://localhost:8080
 |]

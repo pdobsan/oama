@@ -1,6 +1,6 @@
 cabal-version:      3.8
 name:               oama
-version:            0.13
+version:            0.13.1
 license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Peter Dobsan
@@ -19,6 +19,7 @@ common common
     hsyslog,
     http-conduit,
     mtl,
+    network,
     network-uri,
     optparse-applicative,
     pretty-simple,

@@ -12,6 +12,7 @@ module OAMa.Authorization (
   showCreds,
 ) where
 
+import Control.Applicative ((<|>))
 import Control.Concurrent
 import Control.Exception (try)
 import Control.Monad.Reader
@@ -29,9 +30,11 @@ import Data.Time.Clock
 import Data.Time.Format
 import Network.HTTP.Conduit
 import Network.HTTP.Simple
+import Network.Socket
 import Network.URI qualified as URI
+
+-- import Network.URI qualified as URI
 import Network.Wai.Handler.Warp qualified as Warp
-import OAMa.CommandLine
 import OAMa.Environment
 import System.Directory qualified as D
 import System.Exit (ExitCode (ExitSuccess), exitFailure, exitWith)
@@ -162,13 +165,12 @@ getEmailAuth' env email_ = do
     else return $ Right authrec
 
 sendRequest ::
-  Environment
-  -> HTTPMethod
+  HTTPMethod
   -> ParamsMode
   -> String
   -> [(String, Maybe String)]
   -> IO (Either String BSU.ByteString)
-sendRequest env httpMethod paramsMode url params = do
+sendRequest httpMethod paramsMode url params = do
   let params_ = filter (\(_, y) -> isJust y) params
   case paramsMode of
     RequestBody -> do
@@ -176,36 +178,17 @@ sendRequest env httpMethod paramsMode url params = do
       let ps = [(x, y) | (x, Just y) <- params]
           mps = M.fromList ps
           req' = setRequestBodyJSON mps req
-      if optDebug $ options env
-        then do
-          putStrLn "sending all parameters in request body as JSON"
-          pPrint req'
-          putStrLn "request body:"
-          pPrint mps
-          runPost req'
-        else runPost req'
+      runPost req'
     RequestBodyForm -> do
       req <- parseRequest $ show httpMethod ++ " " ++ url
       let ps = [bimap BSU.fromString (BSU.fromString . fromJust) x | x <- params_]
           req' = setRequestBodyURLEncoded ps req
-      if optDebug $ options env
-        then do
-          putStrLn "sending all parameters in request body as form encoded"
-          pPrint req'
-          putStrLn "request body:"
-          pPrint ps
-          runPost req'
-        else runPost req'
+      runPost req'
     QueryString -> do
       req <- parseRequest $ show httpMethod ++ " " ++ url
       let ps = [bimap BSU.fromString (BSU.fromString <$>) x | x <- params_]
           req' = setRequestQueryString ps req
-      if optDebug $ options env
-        then do
-          putStrLn "sending all parameters in the query string"
-          pPrint req'
-          runPost req'
-        else runPost req'
+      runPost req'
  where
   runPost query = do
     (try $ httpBS query :: IO (Either HttpException (Response BSU.ByteString)))
@@ -214,26 +197,16 @@ sendRequest env httpMethod paramsMode url params = do
         Left (InvalidUrlException u _) -> return $ Left u
         Right resp -> do
           let body = getResponseBody resp
-          if optDebug $ options env
-            then do
-              putStrLn "Response Status:"
-              print $ getResponseStatus resp
-              putStrLn "Response Headers:"
-              pPrint $ getResponseHeaders resp
-              putStrLn "Response Body:"
-              pPrint body
-              return $ Right body
-            else return $ Right body
+          return $ Right body
 
 fetchAuthRecord ::
-  Environment
-  -> HTTPMethod
+  HTTPMethod
   -> ParamsMode
   -> String
   -> [(String, Maybe String)]
   -> IO (Either String AuthRecord)
-fetchAuthRecord env httpMethod paramsMode url queries = do
-  sendRequest env httpMethod paramsMode url queries
+fetchAuthRecord httpMethod paramsMode url queries = do
+  sendRequest httpMethod paramsMode url queries
     >>= \case
       Left err -> return $ Left err
       Right resp ->
@@ -255,7 +228,6 @@ renewAccessToken env (Just serv) rft = do
         , ("refresh_token", rft)
         ]
   fetchAuthRecord
-    env
     (fromJust api.token_http_method)
     (fromJust api.token_params_mode)
     (fromJust api.token_endpoint)
@@ -303,8 +275,28 @@ showCreds env email_ = do
 
 -- initial registration for authorization credentials
 
-getAccessToken :: Environment -> String -> String -> IO (Either String AuthRecord)
-getAccessToken env serv authcode = do
+getHostandPort :: String -> (String, Int, String)
+getHostandPort uriString =
+  -- to understand this ugliness
+  -- see https://hackage.haskell.org/package/network-uri
+  let ruri = fromJust $ URI.parseURI uriString
+      ruria = URI.uriAuthority ruri
+      rurihost = URI.uriRegName $ fromJust ruria
+      ruriport = URI.uriPort $ fromJust ruria
+      portnum = read (drop 1 ruriport) :: Int
+      routepath = URI.uriPath $ fromJust $ URI.parseURI uriString
+   in (rurihost, portnum, routepath)
+
+getRandomFreePort :: IO Int
+getRandomFreePort = do
+  s <- socket AF_INET Stream defaultProtocol
+  bind s (SockAddrInet 0 (tupleToHostAddress (127, 0, 0, 1)))
+  p <- socketPort s
+  close s -- should be closed just before usage
+  return $ read (show p)
+
+getAccessToken :: Environment -> String -> String -> String -> IO (Either String AuthRecord)
+getAccessToken env serv redirectURI authcode = do
   api <- getServiceAPI env serv
   let qs =
         [ ("client_id", Just api.client_id)
@@ -312,30 +304,28 @@ getAccessToken env serv authcode = do
         , ("code", Just authcode)
         , ("grant_type", Just "authorization_code")
         , ("tenant", api.tenant)
-        , ("redirect_uri", api.redirect_uri)
+        , ("redirect_uri", Just redirectURI)
         ]
   fetchAuthRecord
-    env
     (fromJust api.token_http_method)
     (fromJust api.token_params_mode)
     (fromJust api.token_endpoint)
     qs
 
 generateAuthPage ::
-  Environment -> String -> EmailAddress -> Bool -> IO (Either String BSU.ByteString)
-generateAuthPage env serv email_ noHint = do
+  Environment -> String -> String -> EmailAddress -> Bool -> IO (Either String BSU.ByteString)
+generateAuthPage env serv redirectURI email_ noHint = do
   api <- getServiceAPI env serv
   let hint = if noHint then "dummy-email-address" else unEmailAddress email_
       qs =
         [ ("client_id", Just api.client_id)
-        , ("redirect_uri", api.redirect_uri)
         , ("response_type", Just "code")
         , ("scope", api.auth_scope)
         , ("login_hint", Just hint)
+        , ("redirect_uri", Just redirectURI)
         -- ,("prompt", Just "consent")
         ]
   sendRequest
-    env
     (fromJust api.auth_http_method)
     (fromJust api.auth_params_mode)
     (fromJust api.auth_endpoint)
@@ -343,43 +333,28 @@ generateAuthPage env serv email_ noHint = do
 
 data AuthResult = AuthSuccess | AuthFailure
 
-getHostandPort :: ServiceAPI -> (String, Int, String)
-getHostandPort api =
-  -- to understand this ugliness
-  -- see https://hackage.haskell.org/package/network-uri
-  let ruri = fromJust $ URI.parseURI (fromJust api.redirect_uri)
-      ruria = URI.uriAuthority ruri
-      rurihost = URI.uriRegName $ fromJust ruria
-      ruriport = URI.uriPort $ fromJust ruria
-      portnum = read (drop 1 ruriport) :: Int
-      routepath = URI.uriPath $ fromJust $ URI.parseURI (fromJust api.redirect_uri)
-   in (rurihost, portnum, routepath)
-
 localWebServer ::
   MVar AuthResult
   -> Environment
-  -> String
-  -> Int
   -> String
   -> String
   -> EmailAddress
   -> Bool
   -> IO ()
--- @? instead of including rurihost and portnum as additional parameters
--- perhaps using the Reader monad and extending the Environment would be better
-localWebServer mvar env rurihost portnum routepath serv email_ noHint = do
-  generateAuthPage env serv email_ noHint
+localWebServer mvar env redirectURI serv email_ noHint = do
+  generateAuthPage env serv redirectURI email_ noHint
     >>= \case
       Left errmsg -> error $ "localWebServer:\n" ++ errmsg
       Right authP -> do
         let startAuth :: TW.ResponderM a
             startAuth = TW.send $ TW.html $ fromStrict authP
+            (hostname, portnumber, routepath) = getHostandPort redirectURI
             localhostWebServer =
-              Warp.setPort portnum $ Warp.setHost (fromString rurihost) Warp.defaultSettings
+              Warp.setPort portnumber $ Warp.setHost (fromString hostname) Warp.defaultSettings
             finishAuth :: TW.ResponderM a
             finishAuth = do
               code :: String <- TW.param "code"
-              liftIO (getAccessToken env serv code)
+              liftIO (getAccessToken env serv redirectURI code)
                 >>= \case
                   Left errmsg -> do
                     liftIO $ putMVar mvar AuthFailure
@@ -436,14 +411,17 @@ authorizeEmail :: Environment -> String -> EmailAddress -> Bool -> IO ()
 authorizeEmail env servName email_ noHint = do
   case M.lookup servName env.services of
     Nothing -> error $ "authorizeEmail: Can't find such service: " ++ servName
-    Just api -> do
-      let (hostname, portnumber, routepath) = getHostandPort api
+    Just _ -> do
+      api <- getServiceAPI env servName
+      portnumber <- getRandomFreePort
+      let redirectURI = api.redirect_uri <|> Just (printf "http://localhost:%d" portnumber)
       mvar <- newEmptyMVar
-      _ <- forkIO $ localWebServer mvar env hostname portnumber routepath servName email_ noHint
+      _ <- forkIO $ localWebServer mvar env (fromJust redirectURI) servName email_ noHint
       printf
         "Authorization to grant OAuth2 access to %s started ... \n"
         (unEmailAddress email_)
-      printf "Visit http://%s:%d/start in your browser ...\n" hostname portnumber
+      let (hostname, portno, _) = getHostandPort $ fromJust redirectURI
+      printf "Visit http://%s:%d/start in your browser ...\n" hostname portno
       takeMVar mvar
         >>= \case
           AuthSuccess -> do
