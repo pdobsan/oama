@@ -59,6 +59,27 @@ interactive process involving a browser since during it, you need to login
 and authorize access to your email account. `oama` will lead you through this
 process.
 
+### Running `oama` remotely
+
+`oama` can be set up to run on a remote machine by running the authorization once
+on the local host with a browser then copying over the obtained credentials to
+the remote host.
+
+Here is how to do it with `GPG` backend.
+
+- Install `oama` both locally and on the remote host. On the local host
+configure `oama` to use the GPG encrypted method to store your OAuth
+credentials.
+
+- Run `oama authorize <service> <email>` on the local host where your
+browser is running.
+
+- Mirror `~/.config/oama/config.yamal` and '~/.local/var/oama/*' on the remote host.
+
+From that point you can use `oama` on the remote machine as usual, just make
+sure that `oama` can access your encryption key by a `gpg-agent` running on the
+remote host.
+
 ## Configuration
 
 `oama` has a simple configuration system. When you run `oama` at the first time
@@ -155,9 +176,10 @@ an issue or by starting a discussion.
 - Before opening an issue search old issues (both open and closed) and check whether 
   similar problems have been raised or solved before.
 
-- Attach the **complete output of the `oama printenv`** command. Do not remove
-  lines, get confidential values redacted by replacing them with XXXXXX.
-  Indicate what kind of `client_id/secret` you are using.
+- Attach the **complete output of the `oama printenv`** command. Do not
+  remove lines, get confidential values redacted by replacing them with
+  `<some explanation>`. In particular, indicate what kind of `client_id/secret`
+  you are using. For example, `<my own app id registered with google>`.
 
 - Send also full error messages and related syslog entries. Even when `oama` was called
   by another program which could have hidden its error messages you might see them in the syslog.
