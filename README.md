@@ -181,6 +181,9 @@ an issue or by starting a discussion.
   `<some explanation>`. In particular, indicate what kind of `client_id/secret`
   you are using. For example, `<my own app id registered with google>`.
 
+- Indicate what kind of account(s) you are using that is who is the service
+  provider and whether your account is personal or institutional.
+
 - Send also full error messages and related syslog entries. Even when `oama` was called
   by another program which could have hidden its error messages you might see them in the syslog.
 
