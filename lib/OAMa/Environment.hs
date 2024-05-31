@@ -110,6 +110,7 @@ builtinServices =
       , defaultServiceAPI
           { auth_endpoint = Just "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
           , auth_http_method = Just GET
+          , token_params_mode = Just RequestBodyForm
           , token_endpoint = Just "https://login.microsoftonline.com/common/oauth2/v2.0/token"
           , auth_scope =
               Just

@@ -1,6 +1,6 @@
 cabal-version:      3.8
 name:               oama
-version:            0.13.1
+version:            0.13.2
 license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Peter Dobsan
