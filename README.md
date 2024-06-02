@@ -1,13 +1,5 @@
 # **oama** - OAuth credential MAnager
 
-> [NOTE!]
-> `oama` is the successor of `mailctl`; for rationale and details, see
-> the [discussion](https://github.com/pdobsan/oama/discussions/26)
-
-The Oauth2 credentials are kept in the
-[**Gnome keyring**](https://wiki.gnome.org/Projects/GnomeKeyring/) or
-in [GNU PG](https://www.gnupg.org/) **encrypted files**.
-
 Many IMAP/SMTP clients, like [msmtp](https://marlam.de/msmtp/),
 [fdm](https://github.com/nicm/fdm),
 [isync](http://isync.sourceforge.net/),
@@ -17,6 +9,10 @@ ability to renew and/or authorize OAuth2 credentials. The purpose of
 `oama` is to provide these missing capabilities by acting as a kind of
 smart password manager. In particular, access token renewal happens
 automatically in the background transparent to the user.
+
+The Oauth2 credentials are kept in the
+[**Gnome keyring**](https://wiki.gnome.org/Projects/GnomeKeyring/) or
+in [GNU PG](https://www.gnupg.org/) **encrypted files**.
 
 ## Usage
 
@@ -187,8 +183,18 @@ an issue or by starting a discussion.
 - Send also full error messages and related syslog entries. Even when `oama` was called
   by another program which could have hidden its error messages you might see them in the syslog.
 
-Not following these guidelines may result in your issue being ignored or get just closed.
+## Alternatives
 
+The programs below solve similar problems as `oama` does but have different
+takes on them.
+
+- [mutt_oauth2.py](https://gitlab.com/muttmua/mutt/-/blob/master/contrib/mutt_oauth2.py)
+
+- [email-oauth2-proxy](https://github.com/simonrob/email-oauth2-proxy)
+
+- [pizauth](https://github.com/ltratt/pizauth)
+
+  
 ## License
 
 `oama` is released under the 3-Clause BSD License, see the file
