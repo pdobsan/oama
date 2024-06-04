@@ -66,6 +66,8 @@ data ServiceAPI = ServiceAPI
   , auth_scope :: Maybe String
   , redirect_uri :: Maybe String
   , tenant :: Maybe String
+  , access_type :: Maybe String
+  , prompt :: Maybe String
   , client_id :: String
   , client_secret :: String
   }
@@ -86,6 +88,8 @@ defaultServiceAPI =
     , auth_scope = Nothing
     , redirect_uri = Nothing
     , tenant = Nothing
+    , access_type = Nothing
+    , prompt = Nothing
     , client_id = "application-CLIENT-ID"
     , client_secret = "application-CLIENT-SECRET"
     }
@@ -101,6 +105,8 @@ builtinServices =
           { auth_endpoint = Just "https://accounts.google.com/o/oauth2/auth"
           , token_endpoint = Just "https://accounts.google.com/o/oauth2/token"
           , auth_scope = Just "https://mail.google.com/"
+          , access_type = Just "offline"
+          , prompt = Just "consent"
           , client_id = "application-CLIENT-ID"
           , client_secret = "application-CLIENT-SECRET"
           }
@@ -179,6 +185,8 @@ updateServiceAPI def cfg =
     , auth_scope = cfg.auth_scope <|> def.auth_scope
     , redirect_uri = cfg.redirect_uri <|> def.redirect_uri
     , tenant = cfg.tenant <|> def.tenant
+    , access_type = cfg.access_type <|> def.access_type
+    , prompt = cfg.prompt <|> def.prompt
     , client_id = cfg.client_id
     , client_secret = cfg.client_secret
     }

@@ -10,7 +10,7 @@ ability to renew and/or authorize OAuth2 credentials. The purpose of
 smart password manager. In particular, access token renewal happens
 automatically in the background transparent to the user.
 
-The Oauth2 credentials are kept in the
+The OAuth2 credentials are kept in the
 [**Gnome keyring**](https://wiki.gnome.org/Projects/GnomeKeyring/) or
 in [GNU PG](https://www.gnupg.org/) **encrypted files**.
 
@@ -95,6 +95,21 @@ details.
 You can see all the configurable options in the `services:` section of the
 output of the `oama printenv` command.
 
+### Application `client_id` and `client_secret`
+
+For institutional accounts your organization should provide the
+`client_{id,secret}` pair regardless who is the service provider.
+
+For personal accounts you can register your own *client application* at your
+service provider and obtain a `client_{id,secret}` pair.
+
+- Microsoft: [Register an application](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app)
+- Google: [Credentials page](https://console.developers.google.com/apis/credentials)
+
+If that too much hassle then you can try to find and use one of the open source
+email clients' `client_{id,secret}` pair. Most of these desktop clients are
+already registered at many service providers.
+ 
 ### Authorization for Corporate/Organizational/Institutional accounts
 
 Corporation/Organization/Institution accounts might be treated differently
@@ -113,7 +128,7 @@ Invoke `oama` using your proper organizational email:
 
     oama authorize microsoft <you@company.email>
 
-Then visit the `http://localhost:8080/start` page to perform the steps
+Then visit the `http://localhost:<portnumber>/start` page to perform the steps
 below:
 
  - Click "Sign in with another account"
@@ -134,7 +149,7 @@ All transactions and exceptions are logged to `syslog`. If your OS using
 ### Compiled static binaries
 
 Each release contains compiled executables of `oama` which should work on
-most Linux distributions. Currently Linux/x86_64 and Linux/aarch64(arm64)
+most Linux distributions. Currently, Linux/x86_64 and Linux/aarch64(arm64)
 binaries are provided. Select the version you want to download from
 [releases](https://github.com/pdobsan/oama/releases).
 

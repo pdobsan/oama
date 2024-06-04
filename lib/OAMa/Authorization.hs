@@ -323,7 +323,8 @@ generateAuthPage env serv redirectURI email_ noHint = do
         , ("scope", api.auth_scope)
         , ("login_hint", Just hint)
         , ("redirect_uri", Just redirectURI)
-        -- ,("prompt", Just "consent")
+        , ("access_type", api.access_type)
+        , ("prompt", api.prompt)
         ]
   sendRequest
     (fromJust api.auth_http_method)
