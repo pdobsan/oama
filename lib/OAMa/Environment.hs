@@ -120,7 +120,7 @@ builtinServices =
           , token_endpoint = Just "https://login.microsoftonline.com/common/oauth2/v2.0/token"
           , auth_scope =
               Just
-                ( "https://outlook.ojffice365.com/IMAP.AccessAsUser.All "
+                ( "https://outlook.office365.com/IMAP.AccessAsUser.All "
                     ++ "https://outlook.office365.com/SMTP.Send "
                     ++ "offline_access"
                 )
