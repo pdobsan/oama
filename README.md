@@ -10,9 +10,16 @@ ability to renew and/or authorize OAuth2 credentials. The purpose of
 smart password manager. In particular, access token renewal happens
 automatically in the background transparent to the user.
 
-The OAuth2 credentials are kept in the
-[**Gnome keyring**](https://wiki.gnome.org/Projects/GnomeKeyring/) or
-in [GNU PG](https://www.gnupg.org/) **encrypted files**.
+The OAuth2 credentials are kept in a keyring provided by any password manager
+with a FreeDesktop.org Secret Service compatible API. Some examples of such
+password managers are:
+
+- [Gnome keyring](https://wiki.gnome.org/Projects/GnomeKeyring/)
+- [KDE Wallet Manager](https://apps.kde.org/kwalletmanager5/)
+- [KeePaasXC](https://keepassxc.org/)
+
+Alternatively [GNU PG](https://www.gnupg.org/) **encrypted files** can also be
+used as a backend for storing credentials.
 
 ## Usage
 
@@ -106,9 +113,9 @@ service provider and obtain a `client_{id,secret}` pair.
 - Microsoft: [Register an application](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app)
 - Google: [Credentials page](https://console.developers.google.com/apis/credentials)
 
-If that too much hassle then you can try to find and use one of the open source
-email clients' `client_{id,secret}` pair. Most of these desktop clients are
-already registered at many service providers.
+If that is too much hassle then you can try to find and use one of the open
+source email clients' `client_{id,secret}` pair. Most of these desktop clients
+are already registered at many service providers.
  
 ### Authorization for Corporate/Organizational/Institutional accounts
 
@@ -196,7 +203,8 @@ an issue or by starting a discussion.
   provider and whether your account is personal or institutional.
 
 - Send also full error messages and related syslog entries. Even when `oama` was called
-  by another program which could have hidden its error messages you might see them in the syslog.
+  by another program which could have hidden its error messages you might see
+  them in the syslog.
 
 ## Alternatives
 
