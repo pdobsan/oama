@@ -58,7 +58,7 @@ getAuthRecord env email_ = do
   getAR env.config.encryption
  where
   getAR :: Encryption -> IO AuthRecord
-  getAR GRING = do
+  getAR KEYRING = do
     (x, o, e) <- P.readProcessWithExitCode "secret-tool" ["lookup", "oama", email_.unEmailAddress] ""
     if x == ExitSuccess
       then case eitherDecode' (BLU.fromString o) :: Either String AuthRecord of
@@ -92,7 +92,7 @@ putAuthRecord env email_ rec = do
   putAR env.config.encryption
  where
   putAR :: Encryption -> IO ()
-  putAR GRING = do
+  putAR KEYRING = do
     let jsrec = BLU.toString $ encode rec
         m = email_.unEmailAddress
     (Just h, _, _, p) <-
@@ -371,8 +371,8 @@ localWebServer mvar env redirectURI serv email_ noHint = do
                       TW.html $
                         BLU.fromString $
                           printf "<h4>Received new refresh and access tokens for %s</h4>" (unEmailAddress email_)
-                            <> if env.config.encryption == GRING
-                              then printf "<p>They have been stored in the Gome keyring.</p>"
+                            <> if env.config.encryption == KEYRING
+                              then printf "<p>They have been stored in the keyring of your password manager.</p>"
                               else
                                 printf
                                   "<p>They have been saved in <samp>%s</samp> encrypted.</p>"
@@ -427,7 +427,7 @@ authorizeEmail env servName email_ noHint = do
         >>= \case
           AuthSuccess -> do
             printf "Received refresh and access tokens ...\n"
-            if env.config.encryption == GRING
+            if env.config.encryption == KEYRING
               then printf "They have been stored in the Gome keyring ...\n"
               else
                 printf

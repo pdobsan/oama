@@ -48,7 +48,7 @@ import Text.Printf
 import Foreign.C.String
 import System.Posix.Syslog (Priority (..), syslog)
 
-data Encryption = GPG String | GRING
+data Encryption = GPG String | KEYRING | GRING
   deriving (Eq, Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
 data ParamsMode = RequestBody | RequestBodyForm | QueryString
@@ -212,8 +212,10 @@ loadEnvironment = do
         if defaultOptsConfig == defaultConfigFile
           then defaultConfigFile
           else defaultOptsConfig
-  cfg <- readConfig configFile :: IO Configuration
-  when (cfg.encryption == GRING) $ do
+  cfg' <- readConfig configFile :: IO Configuration
+  -- get rid of the deprecated GRING
+  let cfg = if cfg'.encryption == GRING then cfg' {encryption = KEYRING} else cfg'
+  when (cfg.encryption == KEYRING) $ do
     uid <- getRealUserID
     -- gnome needs this envvar set
     setEnv "DBUS_SESSION_BUS_ADDRESS" ("unix:path=/run/user/" ++ show uid ++ "/bus")
@@ -326,12 +328,13 @@ initialConfig =
 
 ## Possible options for keeping refresh and access tokens:
 ## GPG - in a gpg encrypted file ~/.local/var/oama/<email-address>.oauth
-## GRING - in the default Gnome keyring
+## KEYRING - in the keyring of a password manager with Secret Service API
+## GRING - the same as KEYRING, deprecated but kept for backward compatibility
 ##
 ## Choose exactly one.
 
 encryption:
-    tag: GRING
+    tag: KEYRING
 
 # encryption:
 #   tag: GPG
