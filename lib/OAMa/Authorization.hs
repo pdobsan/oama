@@ -32,6 +32,7 @@ import Network.HTTP.Conduit
 import Network.HTTP.Simple
 import Network.Socket
 import Network.URI qualified as URI
+import Network.HTTP.Types qualified as H
 
 -- import Network.URI qualified as URI
 import Network.Wai.Handler.Warp qualified as Warp
@@ -312,11 +313,14 @@ getAccessToken env serv redirectURI authcode = do
     (fromJust api.token_endpoint)
     qs
 
+data Page = Redirect String | Content BSU.ByteString
+
 generateAuthPage ::
-  Environment -> String -> String -> EmailAddress -> Bool -> IO (Either String BSU.ByteString)
+  Environment -> String -> String -> EmailAddress -> Bool -> IO (Either String Page)
 generateAuthPage env serv redirectURI email_ noHint = do
   api <- getServiceAPI env serv
-  let hint = if noHint then "dummy-email-address" else unEmailAddress email_
+  let endpoint = fromJust api.auth_endpoint
+      hint = if noHint then "dummy-email-address" else unEmailAddress email_
       qs =
         [ ("client_id", Just api.client_id)
         , ("response_type", Just "code")
@@ -326,11 +330,18 @@ generateAuthPage env serv redirectURI email_ noHint = do
         , ("access_type", api.access_type)
         , ("prompt", api.prompt)
         ]
-  sendRequest
-    (fromJust api.auth_http_method)
-    (fromJust api.auth_params_mode)
-    (fromJust api.auth_endpoint)
-    qs
+  case fromJust api.auth_http_method of
+    GET -> do
+      let urlBase = fromJust $ URI.parseURI endpoint
+          bsQuery = bimap BSU.fromString (fmap BSU.fromString) <$> qs
+          url = urlBase { URI.uriQuery = BSU.toString $ H.renderQuery True bsQuery }
+      pure $ Right $ Redirect $ show url
+    POST -> fmap Content <$>
+      sendRequest
+        POST
+        (fromJust api.auth_params_mode)
+        endpoint
+        qs
 
 data AuthResult = AuthSuccess | AuthFailure
 
@@ -348,7 +359,9 @@ localWebServer mvar env redirectURI serv email_ noHint = do
       Left errmsg -> error $ "localWebServer:\n" ++ errmsg
       Right authP -> do
         let startAuth :: TW.ResponderM a
-            startAuth = TW.send $ TW.html $ fromStrict authP
+            startAuth = case authP of
+              Redirect url -> TW.send $ TW.redirect302 $ fromString url
+              Content page -> TW.send $ TW.html $ fromStrict page
             (hostname, portnumber, routepath) = getHostandPort redirectURI
             localhostWebServer =
               Warp.setPort portnumber $ Warp.setHost (fromString hostname) Warp.defaultSettings
