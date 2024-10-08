@@ -144,7 +144,7 @@ data Configuration = Configuration
 data Environment = Environment
   { oama_version :: String
   , op_sys :: String
-  , data_dir :: String
+  , state_dir :: String
   , config_file :: String
   , config :: Configuration
   , services :: Services
@@ -204,7 +204,7 @@ getConfiguredServices conf =
 
 loadEnvironment :: IO Environment
 loadEnvironment = do
-  (defaultConfigFile, dataDir) <- checkInit
+  (defaultConfigFile, stateDir) <- checkInit
   opts <- customExecParser (prefs showHelpOnEmpty) optsParser
   defaultOptsConfig <- expandTilde opts.optConfig
   opsys <- uname
@@ -223,7 +223,7 @@ loadEnvironment = do
     Environment
       { oama_version = showVersion version
       , op_sys = opsys
-      , data_dir = dataDir
+      , state_dir = stateDir
       , config_file = configFile
       , config = cfg
       , services = getConfiguredServices cfg
@@ -240,14 +240,13 @@ expandTilde inpath = do
 checkInit :: IO (String, String)
 checkInit = do
   configDir <- Dir.getXdgDirectory Dir.XdgConfig "oama"
-  homeDir <- getEnv "HOME"
-  let dataDir = homeDir ++ "/.local/var/oama"
+  stateDir <- Dir.getXdgDirectory Dir.XdgState "oama"
   Dir.createDirectoryIfMissing True configDir
-  Dir.createDirectoryIfMissing True dataDir
+  Dir.createDirectoryIfMissing True stateDir
   let defaultConfigFile = configDir <> "/config.yaml"
   cfgOK <- isFileReadable defaultConfigFile
   if cfgOK
-    then return (defaultConfigFile, dataDir)
+    then return (defaultConfigFile, stateDir)
     else do
       printf "WARNING -- Could not find config file: %s\n" defaultConfigFile
       printf "Creating initial config file ...\n"
@@ -327,7 +326,7 @@ initialConfig =
 ## and look at the `services:` section.
 
 ## Possible options for keeping refresh and access tokens:
-## GPG - in a gpg encrypted file ~/.local/var/oama/<email-address>.oauth
+## GPG - in a gpg encrypted file ~/.local/state/oama/<email-address>.oauth
 ## KEYRING - in the keyring of a password manager with Secret Service API
 ## GRING - the same as KEYRING, deprecated but kept for backward compatibility
 ##

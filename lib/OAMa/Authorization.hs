@@ -69,7 +69,7 @@ getAuthRecord env email_ = do
         putStr e
         exitWith x
   getAR (GPG _) = do
-    let gpgFile = env.data_dir <> "/" <> email_.unEmailAddress <> ".oama"
+    let gpgFile = env.state_dir <> "/" <> email_.unEmailAddress <> ".oama"
     authRecExist <- D.doesFileExist gpgFile
     if authRecExist
       then do
@@ -108,7 +108,7 @@ putAuthRecord env email_ rec = do
       then return ()
       else exitWith x
   putAR (GPG keyID) = do
-    let gpgFile = env.data_dir <> "/" <> email_.unEmailAddress <> ".oama"
+    let gpgFile = env.state_dir <> "/" <> email_.unEmailAddress <> ".oama"
         jsrec = BLU.toString $ encode rec
     (Just h, _, _, p) <-
       P.createProcess
@@ -376,7 +376,7 @@ localWebServer mvar env redirectURI serv email_ noHint = do
                               else
                                 printf
                                   "<p>They have been saved in <samp>%s</samp> encrypted.</p>"
-                                  (env.data_dir <> "/" <> email_.unEmailAddress <> ".oama")
+                                  (env.state_dir <> "/" <> email_.unEmailAddress <> ".oama")
             casService :: TW.ResponderM a
             casService = do
               casURL :: Text <- TW.param "service"
@@ -432,7 +432,7 @@ authorizeEmail env servName email_ noHint = do
               else
                 printf
                   "They have been saved in %s encrypted ...\n"
-                  (env.data_dir <> "/" <> email_.unEmailAddress <> ".oama")
+                  (env.state_dir <> "/" <> email_.unEmailAddress <> ".oama")
           AuthFailure -> printf "ERROR - Authorization failed.\n"
       threadDelay 5_000_000
       printf "... done.\n"
