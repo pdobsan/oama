@@ -18,8 +18,10 @@ password managers are:
 - [KDE Wallet Manager](https://apps.kde.org/kwalletmanager5/)
 - [KeePaasXC](https://keepassxc.org/)
 
-Alternatively [GNU PG](https://www.gnupg.org/) **encrypted files** can also be
-used as a backend for storing credentials.
+Alternatively [GNU PG](https://www.gnupg.org/) **encrypted files** can also
+be used as a backend for storing credentials. These files are kept in the
+`$XDG_STATE_HOME/oama` directory. If the `XDG_STATE_HOME` environment
+variable is not set then it defaults to `$HOME/.local/state`.
 
 ## Usage
 
@@ -77,7 +79,7 @@ credentials.
 - Run `oama authorize <service> <email>` on the local host where your
 browser is running.
 
-- Mirror `~/.config/oama/config.yamal` and '~/.local/var/oama/*' on the remote host.
+- Mirror `~/.config/oama/config.yamal` and '~/.local/state/oama/*' on the remote host.
 
 From that point you can use `oama` on the remote machine as usual, just make
 sure that `oama` can access your encryption key by a `gpg-agent` running on the
@@ -85,9 +87,12 @@ remote host.
 
 ## Configuration
 
-`oama` has a simple configuration system. When you run `oama` at the first time
-it will create the initial config file what you need to edit. This YAML file is
-commented explaining your options, just follow the instructions there.
+`oama` has a simple configuration system. When you run `oama` at the first
+time it will create the initial config file `config.yaml` in the
+`$XDG_CONFIG_HOME/oama` directory. If the XDG_CONFIG_HOME environment
+variable is not set then it defaults to `$HOME/.config`. You need to edit the
+initially created config file. This YAML file is commented explaining your
+options, just follow the instructions there.
 
 First select the method of storing the OAuth credentials. Then configure the
 services you are going to use. There are two kinds of services the *builtin*
