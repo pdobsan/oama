@@ -29,8 +29,9 @@ import Control.Monad (when)
 import Data.ByteString.UTF8 qualified as BSU
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (fromJust)
 import Data.String.QQ
-import Data.Strings (strDrop, strStartsWith)
+import Data.Strings (strDrop, sReplace, strStartsWith)
 import Data.Time.Clock
 import Data.Version (showVersion)
 import Data.Yaml qualified as Yaml
@@ -191,12 +192,23 @@ updateServiceAPI def cfg =
     , client_secret = cfg.client_secret
     }
 
+-- replace ".../common/..." with ".../tenant/..." in endpoints
+adjustEndpoints :: ServiceAPI -> ServiceAPI
+adjustEndpoints ms =
+  let tenant' = fromJust ms.tenant
+      auth_endpoint' = sReplace "common" tenant' (fromJust ms.auth_endpoint)
+      token_endpoint' = sReplace "common" tenant' (fromJust ms.token_endpoint)
+   in ms {auth_endpoint = Just auth_endpoint', token_endpoint = Just token_endpoint'}
+
 getConfiguredServices :: Configuration -> Services
 getConfiguredServices conf =
   let cfgServers = Map.toList conf.services
       cfgBuiltins = [(name, Map.lookup name builtinServices) | (name, _) <- cfgServers]
       mergedServers = zipWith update cfgServers cfgBuiltins
-   in Map.fromList mergedServers
+      servs = Map.fromList mergedServers
+   in case Map.lookup "microsoft" servs of
+      Just _ -> Map.adjust adjustEndpoints "microsoft" servs 
+      Nothing -> servs
  where
   update :: (String, ServiceAPI) -> (String, Maybe ServiceAPI) -> (String, ServiceAPI)
   update (name, configured) (_, Just builtin) = (name, updateServiceAPI builtin configured)

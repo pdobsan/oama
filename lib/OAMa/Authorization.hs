@@ -30,9 +30,9 @@ import Data.Time.Clock
 import Data.Time.Format
 import Network.HTTP.Conduit
 import Network.HTTP.Simple
+import Network.HTTP.Types (renderQuery)
 import Network.Socket
 import Network.URI qualified as URI
-import Network.HTTP.Types qualified as H
 
 -- import Network.URI qualified as URI
 import Network.Wai.Handler.Warp qualified as Warp
@@ -334,14 +334,15 @@ generateAuthPage env serv redirectURI email_ noHint = do
     GET -> do
       let urlBase = fromJust $ URI.parseURI endpoint
           bsQuery = bimap BSU.fromString (fmap BSU.fromString) <$> qs
-          url = urlBase { URI.uriQuery = BSU.toString $ H.renderQuery True bsQuery }
+          url = urlBase {URI.uriQuery = BSU.toString $ renderQuery True bsQuery}
       pure $ Right $ Redirect $ show url
-    POST -> fmap Content <$>
-      sendRequest
-        POST
-        (fromJust api.auth_params_mode)
-        endpoint
-        qs
+    POST ->
+      fmap Content
+        <$> sendRequest
+          POST
+          (fromJust api.auth_params_mode)
+          endpoint
+          qs
 
 data AuthResult = AuthSuccess | AuthFailure
 
