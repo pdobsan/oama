@@ -31,7 +31,7 @@ import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromJust)
 import Data.String.QQ
-import Data.Strings (strDrop, sReplace, strStartsWith)
+import Data.Strings (sReplace, strDrop, strStartsWith)
 import Data.Time.Clock
 import Data.Version (showVersion)
 import Data.Yaml qualified as Yaml
@@ -121,10 +121,7 @@ builtinServices =
           , token_endpoint = Just "https://login.microsoftonline.com/common/oauth2/v2.0/token"
           , auth_scope =
               Just
-                ( "https://outlook.office365.com/IMAP.AccessAsUser.All "
-                    ++ "https://outlook.office365.com/SMTP.Send "
-                    ++ "offline_access"
-                )
+                "https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/POP.AccessAsUser.All https://outlook.office.com/SMTP.Send offline_access"
           , tenant = Just "common"
           , client_id = "application-CLIENT-ID"
           , client_secret = "application-CLIENT-SECRET"
@@ -207,8 +204,8 @@ getConfiguredServices conf =
       mergedServers = zipWith update cfgServers cfgBuiltins
       servs = Map.fromList mergedServers
    in case Map.lookup "microsoft" servs of
-      Just _ -> Map.adjust adjustEndpoints "microsoft" servs 
-      Nothing -> servs
+        Just _ -> Map.adjust adjustEndpoints "microsoft" servs
+        Nothing -> servs
  where
   update :: (String, ServiceAPI) -> (String, Maybe ServiceAPI) -> (String, ServiceAPI)
   update (name, configured) (_, Just builtin) = (name, updateServiceAPI builtin configured)
@@ -365,8 +362,8 @@ services:
   # microsoft:
   #   client_id: application-CLIENT-ID 
   #   client_secret: application-CLIENT_SECRET
-  #   auth_scope: https://outlook.office365.com/IMAP.AccessAsUser.All
-  #     https://outlook.office365.com/SMTP.Send
+  #   auth_scope: https://outlook.office.com/IMAP.AccessAsUser.All
+  #     https://outlook.office.com/SMTP.Send
   #     offline_access
   #   tenant: common
 
