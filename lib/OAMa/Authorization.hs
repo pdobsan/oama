@@ -442,7 +442,7 @@ authorizeEmail env servName email_ noHint = do
           AuthSuccess -> do
             printf "Received refresh and access tokens ...\n"
             if env.config.encryption == KEYRING
-              then printf "They have been stored in the Gome keyring ...\n"
+              then printf "They have been stored in the keyring of your password manager. ...\n"
               else
                 printf
                   "They have been saved in %s encrypted ...\n"

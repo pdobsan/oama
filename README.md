@@ -121,19 +121,20 @@ service provider and obtain a `client_{id,secret}` pair.
 If that is too much hassle then you can try to find and use one of the open
 source email clients' `client_{id,secret}` pair. Most of these desktop clients
 are already registered at many service providers.
- 
-### Authorization for Corporate/Organizational/Institutional accounts
 
-Corporation/Organization/Institution accounts might be treated differently
-by the service provider. In such cases, not passing a login hint might be
-useful, see below.
-
-#### Google Organizational Account
+### Google Organizational Account
 
 Invoke `oama` with no login hint:
 
     oama authorize google <you@company.email> --nohint
 
+### Microsoft accounts
+
+The default `tenant` for a Microsoft account is `common` which is also
+included in the `auth_endpoint` and `token_endpoint` URL-s. If you need to
+use a different `tenant` value then it is enough to specify only the `tenant`
+field the `*_endpoint` URL-s will be automatically changed too.
+ 
 #### Microsoft Organizational Account
 
 Invoke `oama` using your proper organizational email:
