@@ -1,12 +1,17 @@
 cabal-version:      3.12
 name:               oama
-version:            0.15
+version:            0.16
 license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Peter Dobsan
 maintainer:         pdobsan@gmail.com
 extra-source-files:
 data-files:
+
+flag libsecret
+  description: Use the libsecret API to keyrings
+  default: False
+  manual: True
 
 common common
   default-language: Haskell2010
@@ -35,18 +40,30 @@ common common
     utf8-string,
     warp,
     yaml,
+
+  if flag(libsecret)
+    build-depends:
+      gi-gio == 2.0.*,
+      gi-secret >= 0.0.19,
+    cpp-options: -DLIBSECRET
+
   ghc-options:
     -Wall
 
 library
   import:         common
-  hs-source-dirs: lib
+  hs-source-dirs: lib/oama
   other-modules:  Paths_oama
   autogen-modules: Paths_oama
   exposed-modules:
-    OAMa.Authorization,
-    OAMa.CommandLine,
-    OAMa.Environment,
+    OAMa.Authorization
+    OAMa.CommandLine
+    OAMa.Environment
+    Keyring
+  if flag(libsecret)
+    hs-source-dirs: lib/keyring/libsecret
+  else
+    hs-source-dirs: lib/keyring/secret-tool
 
 executable oama
   import:         common

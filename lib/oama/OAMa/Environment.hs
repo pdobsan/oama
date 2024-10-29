@@ -54,6 +54,7 @@ data Encryption = GPG String | KEYRING | GRING
 
 data ParamsMode = RequestBody | RequestBodyForm | QueryString
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
+
 data HTTPMethod = POST | GET
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 

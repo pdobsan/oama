@@ -16,7 +16,7 @@ build:
 	cabal build $(CABAL_FLAGS)
 
 install: build
-	install -s "$$(cabal list-bin $(PROG))" $(BIN_DIR)
+	cabal install $(CABAL_FLAGS)
 
 trim:
 	strip $(BIN_DIR)/$(PROG)

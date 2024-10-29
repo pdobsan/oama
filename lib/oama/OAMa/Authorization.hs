@@ -3,7 +3,9 @@
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module OAMa.Authorization (
   authorizeEmail,
@@ -21,20 +23,19 @@ import Data.Bifunctor (bimap)
 import Data.ByteString.Lazy (fromStrict)
 import Data.ByteString.Lazy.UTF8 qualified as BLU
 import Data.ByteString.UTF8 qualified as BSU
-import Data.Map qualified as M
+import Data.Map qualified as Map
 import Data.Maybe (fromJust, fromMaybe, isJust)
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text.Lazy.Encoding qualified as TLE
 import Data.Time.Clock
 import Data.Time.Format
+import Keyring
 import Network.HTTP.Conduit
 import Network.HTTP.Simple
 import Network.HTTP.Types (renderQuery)
 import Network.Socket
 import Network.URI qualified as URI
-
--- import Network.URI qualified as URI
 import Network.Wai.Handler.Warp qualified as Warp
 import OAMa.Environment
 import System.Directory qualified as D
@@ -58,17 +59,11 @@ getAuthRecord :: Environment -> EmailAddress -> IO AuthRecord
 getAuthRecord env email_ = do
   getAR env.config.encryption
  where
-  getAR :: Encryption -> IO AuthRecord
-  getAR KEYRING = do
-    (x, o, e) <- P.readProcessWithExitCode "secret-tool" ["lookup", "oama", email_.unEmailAddress] ""
-    if x == ExitSuccess
-      then case eitherDecode' (BLU.fromString o) :: Either String AuthRecord of
-        Left err -> error $ "readAuthRecord:\n" ++ err
-        Right rec -> return rec
-      else do
-        putStrLn $ "Can't find authorization record for " ++ unEmailAddress email_
-        putStr e
-        exitWith x
+  getAR GRING = do
+    printf "GRING is deprecated use KEYRING instead in config."
+    logger Warning $ printf "GRING is deprecated use KEYRING instead in config."
+    getARfromKeyring email_
+  getAR KEYRING = getARfromKeyring email_
   getAR (GPG _) = do
     let gpgFile = env.state_dir <> "/" <> email_.unEmailAddress <> ".oama"
     authRecExist <- D.doesFileExist gpgFile
@@ -93,21 +88,11 @@ putAuthRecord env email_ rec = do
   putAR env.config.encryption
  where
   putAR :: Encryption -> IO ()
-  putAR KEYRING = do
-    let jsrec = BLU.toString $ encode rec
-        m = email_.unEmailAddress
-    (Just h, _, _, p) <-
-      P.createProcess
-        (P.proc "secret-tool" ["store", "--label", "oama - " ++ m, "oama", m])
-          { P.std_in = P.CreatePipe
-          }
-    IO.hPutStr h jsrec
-    IO.hFlush h
-    IO.hClose h
-    x <- P.waitForProcess p
-    if x == ExitSuccess
-      then return ()
-      else exitWith x
+  putAR GRING = do
+    printf "GRING is deprecated use KEYRING instead in config."
+    logger Warning $ printf "GRING is deprecated use KEYRING instead in config."
+    putARintoKeyring email_ rec
+  putAR KEYRING = putARintoKeyring email_ rec
   putAR (GPG keyID) = do
     let gpgFile = env.state_dir <> "/" <> email_.unEmailAddress <> ".oama"
         jsrec = BLU.toString $ encode rec
@@ -177,7 +162,7 @@ sendRequest httpMethod paramsMode url params = do
     RequestBody -> do
       req <- parseRequest $ show httpMethod ++ " " ++ url
       let ps = [(x, y) | (x, Just y) <- params]
-          mps = M.fromList ps
+          mps = Map.fromList ps
           req' = setRequestBodyJSON mps req
       runPost req'
     RequestBodyForm -> do
@@ -424,7 +409,7 @@ localWebServer mvar env redirectURI serv email_ noHint = do
 -- when this function is called we always start from scratch
 authorizeEmail :: Environment -> String -> EmailAddress -> Bool -> IO ()
 authorizeEmail env servName email_ noHint = do
-  case M.lookup servName env.services of
+  case Map.lookup servName env.services of
     Nothing -> error $ "authorizeEmail: Can't find such service: " ++ servName
     Just _ -> do
       api <- getServiceAPI env servName
