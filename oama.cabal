@@ -45,7 +45,6 @@ common common
     build-depends:
       gi-gio == 2.0.*,
       gi-secret >= 0.0.19,
-    cpp-options: -DLIBSECRET
 
   ghc-options:
     -Wall
