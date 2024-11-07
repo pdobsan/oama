@@ -35,7 +35,7 @@ common common
     strings,
     text,
     time,
-    twain,
+    twain >=2.2.0.1,
     unix,
     utf8-string,
     warp,
