@@ -1,5 +1,7 @@
 # **oama** - OAuth credential MAnager
 
+## Synopsys
+
 Many IMAP/SMTP clients, like [msmtp](https://marlam.de/msmtp/),
 [fdm](https://github.com/nicm/fdm),
 [isync](http://isync.sourceforge.net/),
@@ -143,7 +145,7 @@ Install and configure `oama` on the remote host. Chose a back-end, it can be
 either GPG or KEYRING. Make sure that the back-end installed and **works as
 desired** on the remote machine.
 
-Pick a free, non-privileged `<port-number` and include
+Pick a free, non-privileged `<port-number>` and include
 
     redirect_uri: http://localhost:<port-number>
 
@@ -169,11 +171,11 @@ All transactions and exceptions are logged to `syslog`. If your OS using
 
 ## Installation
 
-### Compiled static binaries
+### Precompiled binaries
 
-Each release contains compiled executables of `oama` which should work on
-most Linux distributions. Currently, Linux/x86_64 and Linux/aarch64(arm64)
-binaries are provided. Select the version you want to download from
+Each release contains a few precompiled binaries of `oama`. Currently,
+Linux/x86_64, Linux/aarch64(arm64) and FreeBSD/amd64 executables are provided.
+Select the version you want to download from
 [releases](https://github.com/pdobsan/oama/releases).
 
 #### Archlinux
@@ -184,7 +186,7 @@ For Archlinux users there is also a package on AUR:
 ### Building from sources
 
 To build `oama` from source you need a Haskell development environment,
-with `ghc 9.4.8` or higher. Either your platform's package system can provide
+with `ghc 9.4.x` or higher. Either your platform's package system can provide
 this or you can use [ghcup](https://www.haskell.org/ghcup/). Once you have
 the `ghc` Haskell compiler and `cabal` etc. installed, follow the steps
 below:
@@ -237,5 +239,5 @@ takes on them.
 ## License
 
 `oama` is released under the 3-Clause BSD License, see the file
-[LICENSE](LICENSE).
+[License](License).
 
