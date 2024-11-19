@@ -52,7 +52,7 @@ import Web.Twain qualified as TW
 -- https://developers.google.com/identity/protocols/oauth2/native-app
 -- https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow
 --
--- The managed credentials are kept in either in Gnome keyring
+-- The managed credentials are kept in either in a libsecret based keyring (like Gnome's) 
 -- or in GPG encrypted files. Only one of these methods can be used.
 
 getAuthRecord :: Environment -> EmailAddress -> IO AuthRecord

@@ -40,7 +40,7 @@ import OAMa.CommandLine
 import Options.Applicative (customExecParser, prefs, showHelpOnEmpty)
 import Paths_oama (version)
 import System.Directory qualified as Dir
-import System.Environment (getEnv, setEnv)
+import System.Environment (lookupEnv, getEnv, setEnv)
 import System.Exit (ExitCode (ExitSuccess), exitFailure)
 import System.Posix.User (getRealUserID)
 import System.Process qualified as Proc
@@ -226,9 +226,11 @@ loadEnvironment = do
   -- get rid of the deprecated GRING
   let cfg = if cfg'.encryption == GRING then cfg' {encryption = KEYRING} else cfg'
   when (cfg.encryption == KEYRING) $ do
-    uid <- getRealUserID
-    -- gnome needs this envvar set
-    setEnv "DBUS_SESSION_BUS_ADDRESS" ("unix:path=/run/user/" ++ show uid ++ "/bus")
+    -- libsecret based keyrings need this envvar set
+    dbus <- lookupEnv "DBUS_SESSION_BUS_ADDRESS"
+    when (dbus == Nothing) $ do
+      uid <- getRealUserID
+      setEnv "DBUS_SESSION_BUS_ADDRESS" ("unix:path=/run/user/" ++ show uid ++ "/bus")
   return
     Environment
       { oama_version = showVersion version
@@ -336,9 +338,10 @@ initialConfig =
 ## and look at the `services:` section.
 
 ## Possible options for keeping refresh and access tokens:
+## GPG - in a gpg encrypted file $XDG_STATE_HOME/oama/<email-address>.oauth
+##       (XDG_STATE_HOME defaults to ~/.local/state)
 ## GPG - in a gpg encrypted file ~/.local/state/oama/<email-address>.oauth
 ## KEYRING - in the keyring of a password manager with Secret Service API
-## GRING - the same as KEYRING, deprecated but kept for backward compatibility
 ##
 ## Choose exactly one.
 

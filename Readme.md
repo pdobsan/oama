@@ -191,14 +191,19 @@ this or you can use [ghcup](https://www.haskell.org/ghcup/). Once you have
 the `ghc` Haskell compiler and `cabal` etc. installed, follow the steps
 below:
 
-Clone this repository and invoke `cabal`:
-
     git clone https://github.com/pdobsan/oama
     cd oama
     cabal update
-    cabal install --install-method=copy
 
-That installs `oama` into the `~/.cabal/bin/` directory.
+To install a build of `oama` which uses the external `secret-tool` utility to manage keyrings.
+
+    make install
+
+To install a build of `oama` which directly uses the `libsecret` API.
+
+    make install CABAL_FLAGS=-flibsecret 
+
+`oama` will be installed into the `~/.cabal/bin/` directory.
 
 ## Issues
 
