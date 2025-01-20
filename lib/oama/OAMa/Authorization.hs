@@ -5,20 +5,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 
 module OAMa.Authorization (
   authorizeEmail,
   getEmailAuth,
   forceRenew,
   showCreds,
-) where
+)
+where
 
 import Control.Applicative ((<|>))
 import Control.Concurrent
 import Control.Exception (try)
 import Control.Monad.Reader
-import Data.Aeson (eitherDecode', eitherDecodeStrict, encode)
+import Data.Aeson (eitherDecodeStrict)
 import Data.Bifunctor (bimap)
 import Data.ByteString.Lazy (fromStrict)
 import Data.ByteString.Lazy.UTF8 qualified as BLU
@@ -30,6 +30,7 @@ import Data.Text (Text)
 import Data.Text.Lazy.Encoding qualified as TLE
 import Data.Time.Clock
 import Data.Time.Format
+import GnuPG
 import Keyring
 import Network.HTTP.Conduit
 import Network.HTTP.Simple
@@ -38,11 +39,7 @@ import Network.Socket
 import Network.URI qualified as URI
 import Network.Wai.Handler.Warp qualified as Warp
 import OAMa.Environment
-import System.Directory qualified as D
-import System.Exit (ExitCode (ExitSuccess), exitFailure, exitWith)
-import System.IO qualified as IO
 import System.Posix.Syslog (Priority (..))
-import System.Process qualified as P
 import Text.Pretty.Simple (pPrint, pShowNoColor)
 import Text.Printf (printf)
 import Web.Twain qualified as TW
@@ -52,7 +49,7 @@ import Web.Twain qualified as TW
 -- https://developers.google.com/identity/protocols/oauth2/native-app
 -- https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow
 --
--- The managed credentials are kept in either in a libsecret based keyring (like Gnome's) 
+-- The managed credentials are kept in either in a libsecret based keyring (like Gnome's)
 -- or in GPG encrypted files. Only one of these methods can be used.
 
 getAuthRecord :: Environment -> EmailAddress -> IO AuthRecord
@@ -64,24 +61,7 @@ getAuthRecord env email_ = do
     logger Warning $ printf "GRING is deprecated use KEYRING instead in config."
     getARfromKeyring email_
   getAR KEYRING = getARfromKeyring email_
-  getAR (GPG _) = do
-    let gpgFile = env.state_dir <> "/" <> email_.unEmailAddress <> ".oama"
-    authRecExist <- D.doesFileExist gpgFile
-    if authRecExist
-      then do
-        (x, o, e) <- P.readProcessWithExitCode "gpg" ["--decrypt", gpgFile] ""
-        if x == ExitSuccess
-          then case eitherDecode' (BLU.fromString o) :: Either String AuthRecord of
-            Left err -> error $ "readAuthRecord:\n" ++ err
-            Right rec -> return rec
-          else do
-            putStr e
-            exitWith x
-      else do
-        printf "Can't find authorization record for %s\n" (unEmailAddress email_)
-        printf "You must run `oama authorize ...` before using other operations.\n"
-        logger Error $ printf "Can't find authorization record for %s\n" (unEmailAddress email_)
-        exitFailure
+  getAR (GPG _) = getARwithGPG env email_
 
 putAuthRecord :: Environment -> EmailAddress -> AuthRecord -> IO ()
 putAuthRecord env email_ rec = do
@@ -93,21 +73,7 @@ putAuthRecord env email_ rec = do
     logger Warning $ printf "GRING is deprecated use KEYRING instead in config."
     putARintoKeyring email_ rec
   putAR KEYRING = putARintoKeyring email_ rec
-  putAR (GPG keyID) = do
-    let gpgFile = env.state_dir <> "/" <> email_.unEmailAddress <> ".oama"
-        jsrec = BLU.toString $ encode rec
-    (Just h, _, _, p) <-
-      P.createProcess
-        (P.proc "gpg" ["--encrypt", "--recipient", keyID, "-o", gpgFile <> ".new"])
-          { P.std_in = P.CreatePipe
-          }
-    IO.hPutStr h jsrec
-    IO.hFlush h
-    IO.hClose h
-    x <- P.waitForProcess p
-    if x == ExitSuccess
-      then D.renameFile (gpgFile ++ ".new") gpgFile
-      else exitWith x
+  putAR (GPG keyID) = putARwithGPG env keyID email_ rec
 
 timeStampFormat :: String
 timeStampFormat = "%Y-%m-%d %H:%M %Z"

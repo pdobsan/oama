@@ -1,16 +1,14 @@
 {-# LANGUAGE ImportQualifiedPost #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Keyring (
   getARfromKeyring,
   putARintoKeyring,
-) where
+)
+where
 
 import Data.Aeson (eitherDecode', encode)
 import Data.ByteString.Lazy.UTF8 qualified as BLU

@@ -1,6 +1,5 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PartialTypeSignatures #-}
@@ -10,7 +9,8 @@
 module Keyring (
   getARfromKeyring,
   putARintoKeyring,
-) where
+)
+where
 
 import Data.Aeson (eitherDecodeStrict, encode)
 import Data.Map qualified as Map
@@ -22,8 +22,6 @@ import GI.Gio qualified as Gio
 import GI.Secret.Functions qualified as GIS
 import OAMa.Environment
 import System.Exit (exitFailure)
-
--- import Text.Printf (printf)
 
 getARfromKeyring :: EmailAddress -> IO AuthRecord
 getARfromKeyring email_ = do

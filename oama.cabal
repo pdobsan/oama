@@ -1,6 +1,6 @@
 cabal-version:      3.12
 name:               oama
-version:            0.16
+version:            0.17
 license:            BSD-3-Clause
 license-file:       License
 author:             Peter Dobsan
@@ -10,7 +10,12 @@ data-files:
 
 flag libsecret
   description: Use the libsecret API to keyrings
-  default: False
+  default: True
+  manual: True
+
+flag gpgme
+  description: Use the gpgme API to GnuPG
+  default: True
   manual: True
 
 common common
@@ -45,6 +50,9 @@ common common
     build-depends:
       gi-gio == 2.0.*,
       gi-secret >= 0.0.19,
+  if flag(gpgme)
+    build-depends:
+      h-gpgme,
 
   ghc-options:
     -Wall
@@ -59,10 +67,15 @@ library
     OAMa.CommandLine
     OAMa.Environment
     Keyring
+    GnuPG
   if flag(libsecret)
     hs-source-dirs: lib/keyring/libsecret
   else
     hs-source-dirs: lib/keyring/secret-tool
+  if flag(gpgme)
+    hs-source-dirs: lib/gnupg/gpgme
+  else
+    hs-source-dirs: lib/gnupg/gpg-tool
 
 executable oama
   import:         common

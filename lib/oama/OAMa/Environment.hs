@@ -22,7 +22,8 @@ module OAMa.Environment (
   pprintEnv,
   printTemplate,
   logger,
-) where
+)
+where
 
 import Control.Applicative ((<|>))
 import Control.Monad (when)
@@ -35,19 +36,18 @@ import Data.Strings (sReplace, strDrop, strStartsWith)
 import Data.Time.Clock
 import Data.Version (showVersion)
 import Data.Yaml qualified as Yaml
+import Foreign.C.String
 import GHC.Generics
 import OAMa.CommandLine
 import Options.Applicative (customExecParser, prefs, showHelpOnEmpty)
 import Paths_oama (version)
 import System.Directory qualified as Dir
-import System.Environment (lookupEnv, getEnv, setEnv)
+import System.Environment (getEnv, lookupEnv, setEnv)
 import System.Exit (ExitCode (ExitSuccess), exitFailure)
+import System.Posix.Syslog (Priority (..), syslog)
 import System.Posix.User (getRealUserID)
 import System.Process qualified as Proc
 import Text.Printf
-
-import Foreign.C.String
-import System.Posix.Syslog (Priority (..), syslog)
 
 data Encryption = GPG String | KEYRING | GRING
   deriving (Eq, Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
