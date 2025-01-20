@@ -195,13 +195,32 @@ below:
     cd oama
     cabal update
 
-To install a build of `oama` which uses the external `secret-tool` utility to manage keyrings.
+External non Haskell dependencies for the build process:
+
+  - `gpgme`
+  - `libsecret`
+  - `gobject-introspection`
+
+There are dual methods for each option of storing credentials. These can be
+selected using cabal flags.
+
+- `GPG` encrypted file:
+  - using the `gpgme` API provided by `h-gpgme` package (**default**)  
+  - spawning `gpg` utility with pipes to stdin/out <br/>
+    cabal-flag: `-f no-gpgme`
+
+- `KEYRING` service:
+  - using the `libsecret` API provided by `gi-secret` package (**default**)
+  - spawning `secret-tool` utility with pipes to stdin/out <br/>
+    cabal-flag: `-f no-libsecret`
+  
+To install a build of `oama` with the default options issue:
 
     make install
 
-To install a build of `oama` which directly uses the `libsecret` API.
+To install a build of `oama` which uses the `secret-tool` external utility.
 
-    make install CABAL_FLAGS=-flibsecret 
+    make install CABAL_FLAGS=-fno-libsecret 
 
 `oama` will be installed into the `~/.cabal/bin/` directory.
 

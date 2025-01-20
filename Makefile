@@ -12,7 +12,7 @@ help:
 	@echo
 	@echo 'Cabal flags can be passed with CABAL_FLAGS, for example'
 	@echo
-	@echo '  make install CABAL_FLAGS="-flibsecret"'
+	@echo '  make install CABAL_FLAGS="-fno-libsecret"'
 	@echo
 
 build:
