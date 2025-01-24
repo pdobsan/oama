@@ -48,8 +48,8 @@ common common
 
   if flag(libsecret)
     build-depends:
-      gi-gio == 2.0.*,
-      gi-secret >= 0.0.19,
+      gi-gio,
+      gi-secret,
   if flag(gpgme)
     build-depends:
       h-gpgme,

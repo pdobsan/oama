@@ -207,12 +207,12 @@ selected using cabal flags.
 - `GPG` encrypted file:
   - using the `gpgme` API provided by `h-gpgme` package (**default**)  
   - spawning `gpg` utility with pipes to stdin/out <br/>
-    cabal-flag: `-f no-gpgme`
+    cabal-flag: `-f-gpgme`
 
 - `KEYRING` service:
   - using the `libsecret` API provided by `gi-secret` package (**default**)
   - spawning `secret-tool` utility with pipes to stdin/out <br/>
-    cabal-flag: `-f no-libsecret`
+    cabal-flag: `-f-libsecret`
   
 To install a build of `oama` with the default options issue:
 
