@@ -220,7 +220,7 @@ To install a build of `oama` with the default options issue:
 
 To install a build of `oama` which uses the `secret-tool` external utility.
 
-    make install CABAL_FLAGS=-fno-libsecret 
+    make install CABAL_FLAGS=-f-libsecret 
 
 `oama` will be installed into the `~/.cabal/bin/` directory.
 
