@@ -217,7 +217,7 @@ showCreds env email_ = do
       Right rec -> do
         printf "email: %s\n" (unEmailAddress $ fromJust rec.email)
         printf "service: %s\n" (fromMaybe "error - missing service" rec.service)
-        printf "scope: %s\n" rec.scope
+        printf "scope: %s\n" $ fromMaybe "warning -- missing scope" rec.scope
         printf "refresh_token: %s\n" (fromMaybe "error - missing refresh_token" rec.refresh_token)
         printf "access_token: %s\n" rec.access_token
         printf "token_type: %s\n" rec.token_type

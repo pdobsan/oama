@@ -157,7 +157,7 @@ newtype EmailAddress = EmailAddress {unEmailAddress :: String}
 data AuthRecord = AuthRecord
   { email :: Maybe EmailAddress
   , service :: Maybe String
-  , scope :: String
+  , scope :: Maybe String
   , refresh_token :: Maybe String
   , access_token :: String
   , token_type :: String
