@@ -5,20 +5,22 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
 
-module OAMa.Authorization (
-  authorizeEmail,
-  getEmailAuth,
-  forceRenew,
-  showCreds,
-)
+module OAMa.Authorization
+  ( authorizeEmail,
+    getEmailAuth,
+    forceRenew,
+    showCreds,
+  )
 where
 
 import Control.Applicative ((<|>))
 import Control.Concurrent
 import Control.Exception (try)
 import Control.Monad.Reader
-import Data.Aeson (eitherDecodeStrict)
+import Crypto.Manager
+import Data.Aeson (eitherDecode', eitherDecodeStrict, encode)
 import Data.Bifunctor (bimap)
 import Data.ByteString.Lazy (fromStrict)
 import Data.ByteString.Lazy.UTF8 qualified as BLU
@@ -30,8 +32,6 @@ import Data.Text (Text)
 import Data.Text.Lazy.Encoding qualified as TLE
 import Data.Time.Clock
 import Data.Time.Format
-import GnuPG
-import Keyring
 import Network.HTTP.Conduit
 import Network.HTTP.Simple
 import Network.HTTP.Types (renderQuery)
@@ -39,11 +39,18 @@ import Network.Socket
 import Network.URI qualified as URI
 import Network.Wai.Handler.Warp qualified as Warp
 import OAMa.Environment
+import System.Directory qualified as D
+import System.Exit (exitFailure)
 import System.Posix.Syslog (Priority (..))
 import Text.Pretty.Simple (pPrint, pShowNoColor)
 import Text.Printf (printf)
 import Web.Twain qualified as TW
 
+-- #ifdef SECRET_LIBS
+-- import Crypto.SecretLibs
+-- #else
+-- import Crypto.SecretTools
+-- #endif
 -- The OAuth2 authorization flow's implementation is based on these docs:
 --
 -- https://developers.google.com/identity/protocols/oauth2/native-app
@@ -55,32 +62,69 @@ import Web.Twain qualified as TW
 getAuthRecord :: Environment -> EmailAddress -> IO AuthRecord
 getAuthRecord env email_ = do
   getAR env.config.encryption
- where
-  getAR GRING = do
-    printf "GRING is deprecated use KEYRING instead in config."
-    logger Warning $ printf "GRING is deprecated use KEYRING instead in config."
-    getARfromKeyring email_
-  getAR KEYRING = getARfromKeyring email_
-  getAR (GPG _) = getARwithGPG env email_
+  where
+    getAR KEYRING = do
+      lookupSecret "oama" email_.unEmailAddress
+        >>= \case
+          Right o ->
+            case eitherDecode' (BLU.fromString o) :: Either String AuthRecord of
+              Left err -> error $ "readAuthRecord:\n" ++ err
+              Right rec -> return rec
+          Left e -> do
+            printf "%s\n" (show e)
+            logger Error (show e)
+            exitFailure
+    getAR (GPG _) = do
+      let gpgFile = env.state_dir <> "/" <> email_.unEmailAddress <> ".oama"
+      authRecExist <- D.doesFileExist gpgFile
+      if authRecExist
+        then do
+          decryptFile gpgFile
+            >>= \case
+              Right o -> do
+                case eitherDecode' (BLU.fromString o) :: Either String AuthRecord of
+                  Left err -> error $ "readAuthRecord:\n" ++ err
+                  Right rec -> return rec
+              Left e -> do
+                printf "%s\n" (show e)
+                logger Error (show e)
+                exitFailure
+        else do
+          printf "Can't find authorization record for %s\n" (unEmailAddress email_)
+          printf "You must run `oama authorize ...` before using other operations.\n"
+          logger Error $ printf "Can't find authorization record for %s\n" (unEmailAddress email_)
+          exitFailure
 
 putAuthRecord :: Environment -> EmailAddress -> AuthRecord -> IO ()
 putAuthRecord env email_ rec = do
+  let jsrec = BLU.toString $ encode rec
+      m = email_.unEmailAddress
+      gpgFile = env.state_dir <> "/" <> email_.unEmailAddress <> ".oama"
+      putAR :: Encryption -> IO ()
+      putAR KEYRING =
+        do
+          storeSecret ("oama - " ++ m) "oama" m jsrec
+          >>= \case
+            Right _ -> return ()
+            Left e -> do
+              printf "%s\n" (show e)
+              logger Error (show e)
+              exitFailure
+      putAR (GPG keyID) = do
+        encryptFile gpgFile jsrec keyID
+          >>= \case
+            Right _ -> return ()
+            Left e -> do
+              printf "%s\n" (show e)
+              logger Error (show e)
+              exitFailure
   putAR env.config.encryption
- where
-  putAR :: Encryption -> IO ()
-  putAR GRING = do
-    printf "GRING is deprecated use KEYRING instead in config."
-    logger Warning $ printf "GRING is deprecated use KEYRING instead in config."
-    putARintoKeyring email_ rec
-  putAR KEYRING = putARintoKeyring email_ rec
-  putAR (GPG keyID) = putARwithGPG env keyID email_ rec
 
 timeStampFormat :: String
 timeStampFormat = "%Y-%m-%d %H:%M %Z"
 
-{-| Get access_token for then given email
-while renewing it when necessary
--}
+-- | Get access_token for then given email
+-- while renewing it when necessary
 getEmailAuth :: Environment -> EmailAddress -> IO ()
 getEmailAuth env email_ = do
   getEmailAuth' env email_
@@ -103,13 +147,13 @@ getEmailAuth' env email_ = do
                 expDate = formatTime defaultTimeLocale timeStampFormat expire
                 authrec' =
                   authrec
-                    { access_token = newat.access_token
-                    , expires_in = newat.expires_in
-                    , exp_date = Just expDate
-                    , -- despite of google's doc refresh_token is not returned!
+                    { access_token = newat.access_token,
+                      expires_in = newat.expires_in,
+                      exp_date = Just expDate,
+                      -- despite of google's doc refresh_token is not returned!
                       -- , refresh_token = refresh_token newat
-                      scope = newat.scope
-                    , token_type = newat.token_type
+                      scope = newat.scope,
+                      token_type = newat.token_type
                     }
             putAuthRecord env email_ authrec'
             logger Notice $ printf "new access token for %s - expires at %s" (unEmailAddress email_) expDate
@@ -117,11 +161,11 @@ getEmailAuth' env email_ = do
     else return $ Right authrec
 
 sendRequest ::
-  HTTPMethod
-  -> ParamsMode
-  -> String
-  -> [(String, Maybe String)]
-  -> IO (Either String BSU.ByteString)
+  HTTPMethod ->
+  ParamsMode ->
+  String ->
+  [(String, Maybe String)] ->
+  IO (Either String BSU.ByteString)
 sendRequest httpMethod paramsMode url params = do
   let params_ = filter (\(_, y) -> isJust y) params
   case paramsMode of
@@ -141,22 +185,22 @@ sendRequest httpMethod paramsMode url params = do
       let ps = [bimap BSU.fromString (BSU.fromString <$>) x | x <- params_]
           req' = setRequestQueryString ps req
       runPost req'
- where
-  runPost query = do
-    (try $ httpBS query :: IO (Either HttpException (Response BSU.ByteString)))
-      >>= \case
-        Left (HttpExceptionRequest _ x) -> return $ Left $ show x
-        Left (InvalidUrlException u _) -> return $ Left u
-        Right resp -> do
-          let body = getResponseBody resp
-          return $ Right body
+  where
+    runPost query = do
+      (try $ httpBS query :: IO (Either HttpException (Response BSU.ByteString)))
+        >>= \case
+          Left (HttpExceptionRequest _ x) -> return $ Left $ show x
+          Left (InvalidUrlException u _) -> return $ Left u
+          Right resp -> do
+            let body = getResponseBody resp
+            return $ Right body
 
 fetchAuthRecord ::
-  HTTPMethod
-  -> ParamsMode
-  -> String
-  -> [(String, Maybe String)]
-  -> IO (Either String AuthRecord)
+  HTTPMethod ->
+  ParamsMode ->
+  String ->
+  [(String, Maybe String)] ->
+  IO (Either String AuthRecord)
 fetchAuthRecord httpMethod paramsMode url queries = do
   sendRequest httpMethod paramsMode url queries
     >>= \case
@@ -174,10 +218,10 @@ renewAccessToken _ _ Nothing = return $ Left "renewAccessToken: Nothing as refre
 renewAccessToken env (Just serv) rft = do
   api <- getServiceAPI env serv
   let qs =
-        [ ("client_id", Just api.client_id)
-        , ("client_secret", Just api.client_secret)
-        , ("grant_type", Just "refresh_token")
-        , ("refresh_token", rft)
+        [ ("client_id", Just api.client_id),
+          ("client_secret", Just api.client_secret),
+          ("grant_type", Just "refresh_token"),
+          ("refresh_token", rft)
         ]
   fetchAuthRecord
     (fromJust api.token_http_method)
@@ -197,13 +241,13 @@ forceRenew env email_ = do
             expDate = formatTime defaultTimeLocale timeStampFormat expire
             authrec' =
               authrec
-                { access_token = access_token newat
-                , expires_in = expires_in newat
-                , exp_date = Just expDate
-                , -- despite of google's doc refresh_token is not returned!
+                { access_token = access_token newat,
+                  expires_in = expires_in newat,
+                  exp_date = Just expDate,
+                  -- despite of google's doc refresh_token is not returned!
                   -- , refresh_token = refresh_token newat
-                  scope = scope newat
-                , token_type = token_type newat
+                  scope = scope newat,
+                  token_type = token_type newat
                 }
         putAuthRecord env email_ authrec'
         logger Notice $ printf "new access token for %s - expires at %s" (unEmailAddress email_) expDate
@@ -217,7 +261,7 @@ showCreds env email_ = do
       Right rec -> do
         printf "email: %s\n" (unEmailAddress $ fromJust rec.email)
         printf "service: %s\n" (fromMaybe "error - missing service" rec.service)
-        printf "scope: %s\n" $ fromMaybe "warning -- missing scope" rec.scope
+        printf "scope: %s\n" (fromMaybe "warning -- missing scope" rec.scope)
         printf "refresh_token: %s\n" (fromMaybe "error - missing refresh_token" rec.refresh_token)
         printf "access_token: %s\n" rec.access_token
         printf "token_type: %s\n" rec.token_type
@@ -251,12 +295,12 @@ getAccessToken :: Environment -> String -> String -> String -> IO (Either String
 getAccessToken env serv redirectURI authcode = do
   api <- getServiceAPI env serv
   let qs =
-        [ ("client_id", Just api.client_id)
-        , ("client_secret", Just api.client_secret)
-        , ("code", Just authcode)
-        , ("grant_type", Just "authorization_code")
-        , ("tenant", api.tenant)
-        , ("redirect_uri", Just redirectURI)
+        [ ("client_id", Just api.client_id),
+          ("client_secret", Just api.client_secret),
+          ("code", Just authcode),
+          ("grant_type", Just "authorization_code"),
+          ("tenant", api.tenant),
+          ("redirect_uri", Just redirectURI)
         ]
   fetchAuthRecord
     (fromJust api.token_http_method)
@@ -273,13 +317,13 @@ generateAuthPage env serv redirectURI email_ noHint = do
   let endpoint = fromJust api.auth_endpoint
       hint = if noHint then "dummy-email-address" else unEmailAddress email_
       qs =
-        [ ("client_id", Just api.client_id)
-        , ("response_type", Just "code")
-        , ("scope", api.auth_scope)
-        , ("login_hint", Just hint)
-        , ("redirect_uri", Just redirectURI)
-        , ("access_type", api.access_type)
-        , ("prompt", api.prompt)
+        [ ("client_id", Just api.client_id),
+          ("response_type", Just "code"),
+          ("scope", api.auth_scope),
+          ("login_hint", Just hint),
+          ("redirect_uri", Just redirectURI),
+          ("access_type", api.access_type),
+          ("prompt", api.prompt)
         ]
   case fromJust api.auth_http_method of
     GET -> do
@@ -298,13 +342,13 @@ generateAuthPage env serv redirectURI email_ noHint = do
 data AuthResult = AuthSuccess | AuthFailure
 
 localWebServer ::
-  MVar AuthResult
-  -> Environment
-  -> String
-  -> String
-  -> EmailAddress
-  -> Bool
-  -> IO ()
+  MVar AuthResult ->
+  Environment ->
+  String ->
+  String ->
+  EmailAddress ->
+  Bool ->
+  IO ()
 localWebServer mvar env redirectURI serv email_ noHint = do
   generateAuthPage env serv redirectURI email_ noHint
     >>= \case
@@ -349,9 +393,9 @@ localWebServer mvar env redirectURI serv email_ noHint = do
 
             routes :: [TW.Middleware]
             routes =
-              [ TW.get "/cas/login" casService
-              , TW.get "/start" startAuth
-              , TW.get (fromString routepath) finishAuth
+              [ TW.get "/cas/login" casService,
+                TW.get "/start" startAuth,
+                TW.get (fromString routepath) finishAuth
               ]
 
             missing :: TW.ResponderM a
