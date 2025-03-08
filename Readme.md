@@ -173,9 +173,8 @@ All transactions and exceptions are logged to `syslog`. If your OS using
 
 ### Precompiled binaries
 
-Each release contains a few precompiled binaries of `oama`. Currently,
-Linux/x86_64, Linux/aarch64(arm64) and FreeBSD/amd64 executables are provided.
-Select the version you want to download from
+Each release comes with a few precompiled static binaries
+of `oama`. Select the version you want to download from
 [releases](https://github.com/pdobsan/oama/releases).
 
 #### Archlinux
@@ -195,32 +194,29 @@ below:
     cd oama
     cabal update
 
-External non Haskell dependencies for the build process:
+There are two alternative methods to build `oama`. One results in an executable
+which uses FFI to external library API-s to access `keyring` or `gpg` encryption
+services. The other method results in an executable which spawns
+external utilities.
 
-  - `gpgme`
-  - `libsecret`
-  - `gobject-introspection`
+#### Build with library API-s
 
-There are dual methods for each option of storing credentials. These can be
-selected using cabal flags.
+    make install-with-libs
 
-- `GPG` encrypted file:
-  - using the `gpgme` API provided by `h-gpgme` package (**default**)  
-  - spawning `gpg` utility with pipes to stdin/out <br/>
-    cabal-flag: `-f-gpgme`
+Dependencies:
 
-- `KEYRING` service:
-  - using the `libsecret` API provided by `gi-secret` package (**default**)
-  - spawning `secret-tool` utility with pipes to stdin/out <br/>
-    cabal-flag: `-f-libsecret`
-  
-To install a build of `oama` with the default options issue:
+  - `gpgme` Linux package
+  - `libsecret` Linux package
+  - `gobject-introspection` Linux package
 
-    make install
+#### Build to use external utilities
 
-To install a build of `oama` which uses the `secret-tool` external utility.
+    make install-with-tools 
 
-    make install CABAL_FLAGS=-f-libsecret 
+Dependencies:
+
+  - `gnupg` Linux package
+  - `libsecret` Linux package or `security` utility in macOS
 
 `oama` will be installed into the `~/.cabal/bin/` directory.
 
