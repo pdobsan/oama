@@ -24,10 +24,10 @@ build-with-libs: clean-local
 	nice cabal build --project-file secret-libs.project
 
 install-with-tools: build-with-tools
-	cabal install --project-file secret-tools.project --install-method=copy
+	cabal install --project-file secret-tools.project --install-method=copy --overwrite-policy=always
 
 install-with-libs: build-with-libs
-	cabal install --project-file secret-libs.project --install-method=copy
+	cabal install --project-file secret-libs.project --install-method=copy --overwrite-policy=always
 
 trim:
 	strip $(BIN_DIR)/$(PROG)
