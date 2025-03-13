@@ -48,7 +48,7 @@ versionOption = do
   let verinfo =
         "oama version "
           <> showVersion version
-          <> "\nCopyright (C) Peter Dobsan 2022-2024"
+          <> "\nCopyright (c) 2022-2025, Peter Dobsan"
   infoOption verinfo (long "version" <> help "Show version")
 
 programOptions :: Parser Opts

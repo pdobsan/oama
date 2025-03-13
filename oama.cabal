@@ -17,7 +17,7 @@ common common
   default-language: Haskell2010
   build-depends:
     aeson,
-    base >=4.16,
+    base >=4.17,
     bytestring,
     containers,
     directory,
@@ -41,11 +41,11 @@ common common
     warp,
     yaml,
   if flag(secret-libs)
+    cpp-options: -DSECRET_LIBS
     build-depends:
-      secret-libs,
-  else
-    build-depends:
-      secret-tools
+      gi-gio,
+      gi-secret,
+      h-gpgme,
 
   ghc-options:
     -Wall
@@ -53,7 +53,9 @@ common common
 library
   import:         common
   hs-source-dirs: lib
-  other-modules:  Paths_oama
+  other-modules:
+    Paths_oama
+    Crypto.Manager
   autogen-modules: Paths_oama
   exposed-modules:
     OAMa.Authorization
