@@ -14,6 +14,7 @@ module Crypto.Manager
     encryptFile,
     lookupSecret,
     storeSecret,
+    secretMethod,
     SecretToolsError (..),
   )
 where
@@ -41,6 +42,9 @@ data SecretToolsError
   | LookupError String
   | StoreError String
   deriving (Show)
+
+secretMethod :: String
+secretMethod = "secret-libs"
 
 decryptFile :: FilePath -> IO (Either SecretToolsError Secret)
 decryptFile f = do
@@ -110,6 +114,7 @@ module Crypto.Manager
     encryptFile,
     lookupSecret,
     storeSecret,
+    secretMethod,
     SecretToolsError (..),
   )
 where
@@ -133,6 +138,9 @@ data SecretToolsError
   | LookupError String
   | StoreError String
   deriving (Show)
+
+secretMethod :: String
+secretMethod = "secret-tools"
 
 decryptFile :: FilePath -> IO (Either SecretToolsError Secret)
 decryptFile f = do

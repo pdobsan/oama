@@ -27,6 +27,7 @@ where
 
 import Control.Applicative ((<|>))
 import Control.Monad (when)
+import Crypto.Manager (secretMethod)
 import Data.ByteString.UTF8 qualified as BSU
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
@@ -292,6 +293,7 @@ readConfig configFile = do
 pprintEnv :: Environment -> IO ()
 pprintEnv env = do
   let envYaml = BSU.toString $ Yaml.encode env
+  printf "### Secret Management Method: %s\n" secretMethod
   putStrLn "###  Runtime environment  ###"
   putStr envYaml
   putStrLn "######"
