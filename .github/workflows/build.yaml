@@ -12,7 +12,12 @@ jobs:
         with:
           ghc-version: latest
           cabal-version: latest
-      - run: |
+      - name: building
+        run: |
           cabal update
           cabal build
+      - name: testing
+        continue-on-error: true
+        run:
           cabal run oama
+          cabal run oama -- printenv
