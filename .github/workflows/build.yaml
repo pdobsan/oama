@@ -1,11 +1,14 @@
 # Refs.: https://github.com/haskell-actions/setup
-name: Build oama - basic
+name: Build/test oama
 on:
   workflow_dispatch
 jobs:
-  cabalbuild:
-    name: cabal build
-    runs-on: ubuntu-latest
+  build-and-test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    continue-on-error: true
+    runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v4
       - uses: haskell-actions/setup@v2
@@ -17,7 +20,6 @@ jobs:
           cabal update
           cabal build
       - name: testing
-        continue-on-error: true
         run:
-          cabal run oama
+          cabal run oama || true
           cabal run oama -- printenv
