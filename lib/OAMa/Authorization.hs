@@ -219,7 +219,7 @@ renewAccessToken env (Just serv) rft = do
   api <- getServiceAPI env serv
   let qs =
         [ ("client_id", Just api.client_id),
-          ("client_secret", Just api.client_secret),
+          ("client_secret", api.client_secret),
           ("grant_type", Just "refresh_token"),
           ("refresh_token", rft)
         ]
@@ -296,7 +296,7 @@ getAccessToken env serv redirectURI authcode = do
   api <- getServiceAPI env serv
   let qs =
         [ ("client_id", Just api.client_id),
-          ("client_secret", Just api.client_secret),
+          ("client_secret", api.client_secret),
           ("code", Just authcode),
           ("grant_type", Just "authorization_code"),
           ("tenant", api.tenant),

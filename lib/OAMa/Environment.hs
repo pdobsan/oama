@@ -72,7 +72,7 @@ data ServiceAPI = ServiceAPI
     access_type :: Maybe String,
     prompt :: Maybe String,
     client_id :: String,
-    client_secret :: String
+    client_secret :: Maybe String
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
@@ -94,7 +94,7 @@ defaultServiceAPI =
       access_type = Nothing,
       prompt = Nothing,
       client_id = "application-CLIENT-ID",
-      client_secret = "application-CLIENT-SECRET"
+      client_secret = Just "application-CLIENT-SECRET"
     }
 
 type Services = Map String ServiceAPI
@@ -110,7 +110,7 @@ builtinServices =
             access_type = Just "offline",
             prompt = Just "consent",
             client_id = "application-CLIENT-ID",
-            client_secret = "application-CLIENT-SECRET"
+            client_secret = Just "application-CLIENT-SECRET"
           }
       ),
       ( "microsoft",
@@ -124,7 +124,7 @@ builtinServices =
                 "https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/POP.AccessAsUser.All https://outlook.office.com/SMTP.Send offline_access",
             tenant = Just "common",
             client_id = "application-CLIENT-ID",
-            client_secret = "application-CLIENT-SECRET"
+            client_secret = Just "application-CLIENT-SECRET"
           }
       )
     ]
