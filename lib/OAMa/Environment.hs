@@ -9,6 +9,7 @@
 
 module OAMa.Environment
   ( AuthRecord (..),
+    AuthError (..),
     Configuration (..),
     Environment (..),
     ServiceAPI (..),
@@ -28,6 +29,7 @@ where
 import Control.Applicative ((<|>))
 import Control.Monad (when)
 import Crypto.Manager (secretMethod)
+import Data.Aeson.Types (Options (allNullaryToStringTag, constructorTagModifier, sumEncoding), SumEncoding (..), camelTo2, defaultOptions, genericParseJSON)
 import Data.ByteString.UTF8 qualified as BSU
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
@@ -165,6 +167,11 @@ data AuthRecord = AuthRecord
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
+data AuthError = InvalidRequest | UnauthorizedClient | AccessDenied | UnsupportedResponseType | InvalidScope | ServerError | TemporarilyUnavailable | Unknown String
+  deriving (Show, Generic)
+
+instance Yaml.FromJSON AuthError where
+  parseJSON = genericParseJSON defaultOptions {constructorTagModifier = camelTo2 '_', allNullaryToStringTag = False, sumEncoding = TaggedObject "error" "raw"}
 -- |
 -- Update defaultServiceAPI with the values read from the config file. Merge fields
 -- of Maybe type with Applicative.(<|>) (short circuting on config values), for
