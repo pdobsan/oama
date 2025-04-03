@@ -42,3 +42,6 @@ a.out
 *.tar.gz
 *.tar.bz2
 *.a
+
+# nix
+.direnv/
