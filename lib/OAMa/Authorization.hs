@@ -20,7 +20,7 @@ import Control.Concurrent
 import Control.Exception (try)
 import Control.Monad.Reader
 import Crypto.Manager
-import Data.Aeson (eitherDecode', eitherDecodeStrict, encode)
+import Data.Aeson (decodeStrict, eitherDecode', eitherDecodeStrict, encode)
 import Data.Bifunctor (bimap)
 import Data.ByteString.Lazy (fromStrict)
 import Data.ByteString.Lazy.UTF8 qualified as BLU
@@ -130,9 +130,9 @@ getEmailAuth env email_ = do
   getEmailAuth' env email_
     >>= \case
       Right rec -> putStrLn $ access_token rec
-      Left errmsg -> error $ "getEmailAuth:\n" ++ errmsg
+      Left errmsg -> error $ "getEmailAuth:\n" ++ show errmsg
 
-getEmailAuth' :: Environment -> EmailAddress -> IO (Either String AuthRecord)
+getEmailAuth' :: Environment -> EmailAddress -> IO (Either AuthError AuthRecord)
 getEmailAuth' env email_ = do
   authrec <- getAuthRecord env email_
   now <- getCurrentTime
@@ -200,21 +200,22 @@ fetchAuthRecord ::
   ParamsMode ->
   String ->
   [(String, Maybe String)] ->
-  IO (Either String AuthRecord)
+  IO (Either AuthError AuthRecord)
 fetchAuthRecord httpMethod paramsMode url queries = do
   sendRequest httpMethod paramsMode url queries
     >>= \case
-      Left err -> return $ Left err
-      Right resp ->
-        case eitherDecodeStrict resp :: Either String AuthRecord of
-          Left err -> do
-            putStrLn $ BSU.toString resp
-            return $ Left $ "fetchAuthRecord: " ++ err
-          Right rec -> return $ Right rec
+      Left err -> return $ Left $ Unknown err
+      Right resp -> do
+        return $ maybe (Left $ decodeAuthError resp) Right $ decodeStrict resp
+  where
+    decodeAuthError :: BSU.ByteString -> AuthError
+    decodeAuthError bs = case eitherDecodeStrict bs :: Either String AuthError of
+      Left err -> Unknown err
+      Right rec -> rec
 
-renewAccessToken :: Environment -> Maybe String -> Maybe String -> IO (Either String AuthRecord)
-renewAccessToken _ Nothing _ = return $ Left "renewAccessToken: Nothing as service string argument"
-renewAccessToken _ _ Nothing = return $ Left "renewAccessToken: Nothing as refresh token argument"
+renewAccessToken :: Environment -> Maybe String -> Maybe String -> IO (Either AuthError AuthRecord)
+renewAccessToken _ Nothing _ = return $ Left $ Unknown "renewAccessToken: Nothing as service string argument"
+renewAccessToken _ _ Nothing = return $ Left $ Unknown "renewAccessToken: Nothing as refresh token argument"
 renewAccessToken env (Just serv) rft = do
   api <- getServiceAPI env serv
   let qs =
@@ -235,7 +236,7 @@ forceRenew env email_ = do
   now <- getCurrentTime
   renewAccessToken env (service authrec) (refresh_token authrec)
     >>= \case
-      Left err -> error err
+      Left err -> error $ show err
       Right newat -> do
         let expire = addUTCTime (expires_in newat - 300) now
             expDate = formatTime defaultTimeLocale timeStampFormat expire
@@ -267,7 +268,7 @@ showCreds env email_ = do
         printf "token_type: %s\n" rec.token_type
         printf "exp_date: %s\n" (fromMaybe "error - missing exp_date" rec.exp_date)
       -- printf "expires_in: %s\n" $ show rec.expires_in
-      Left errmsg -> error $ "showCreds:\n" ++ errmsg
+      Left errmsg -> error $ "showCreds:\n" ++ show errmsg
 
 -- initial registration for authorization credentials
 
@@ -291,7 +292,7 @@ getRandomFreePort = do
   close s -- should be closed just before usage
   return $ read (show p)
 
-getAccessToken :: Environment -> String -> String -> String -> IO (Either String AuthRecord)
+getAccessToken :: Environment -> String -> String -> String -> IO (Either AuthError AuthRecord)
 getAccessToken env serv redirectURI authcode = do
   api <- getServiceAPI env serv
   let qs =
@@ -368,7 +369,7 @@ localWebServer mvar env redirectURI serv email_ noHint = do
                 >>= \case
                   Left errmsg -> do
                     liftIO $ putMVar mvar AuthFailure
-                    error $ "localWebServer:\n" ++ errmsg
+                    error $ "localWebServer:\n" ++ show errmsg
                   Right authr -> do
                     now <- liftIO getCurrentTime
                     let expire = addUTCTime (expires_in authr - 300) now
