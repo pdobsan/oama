@@ -10,6 +10,7 @@
 module OAMa.Environment
   ( AuthRecord (..),
     AuthError (..),
+    DeviceAuthResponse (device_code, user_code, verification_uri, verification_uri_complete, interval),
     Configuration (..),
     Environment (..),
     ServiceAPI (..),
@@ -167,11 +168,22 @@ data AuthRecord = AuthRecord
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
-data AuthError = InvalidRequest | UnauthorizedClient | AccessDenied | UnsupportedResponseType | InvalidScope | ServerError | TemporarilyUnavailable | Unknown String
+data AuthError = InvalidRequest | UnauthorizedClient | AccessDenied | UnsupportedResponseType | InvalidScope | ServerError | TemporarilyUnavailable | AuthorizationPending | SlowDown | ExpiredToken | Unknown String
   deriving (Show, Generic)
 
 instance Yaml.FromJSON AuthError where
   parseJSON = genericParseJSON defaultOptions {constructorTagModifier = camelTo2 '_', allNullaryToStringTag = False, sumEncoding = TaggedObject "error" "raw"}
+
+data DeviceAuthResponse = DeviceAuthResponse
+  { device_code :: String,
+    user_code :: String,
+    verification_uri :: String,
+    verification_uri_complete :: Maybe String,
+    expires_in :: NominalDiffTime,
+    interval :: Maybe Int
+  }
+  deriving (Show, Generic, Yaml.FromJSON)
+
 -- |
 -- Update defaultServiceAPI with the values read from the config file. Merge fields
 -- of Maybe type with Applicative.(<|>) (short circuting on config values), for
