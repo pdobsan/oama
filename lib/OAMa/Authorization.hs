@@ -160,6 +160,16 @@ getEmailAuth' env email_ = do
             return $ Right authrec'
     else return $ Right authrec
 
+requestDeviceAuth :: Environment -> String -> IO (Either AuthError DeviceAuthResponse)
+requestDeviceAuth env serv = do
+  api <- getServiceAPI env serv
+  let qs =
+        [ ("client_id", Just api.client_id),
+          ("scope", api.auth_scope),
+          ("tenant", api.tenant)
+        ]
+  fetchDeviceAuthResponse (fromJust api.auth_endpoint) qs
+
 sendRequest ::
   HTTPMethod ->
   ParamsMode ->
@@ -212,6 +222,19 @@ fetchAuthRecord httpMethod paramsMode url queries = do
     decodeAuthError bs = case eitherDecodeStrict bs :: Either String AuthError of
       Left err -> Unknown err
       Right rec -> rec
+
+fetchDeviceAuthResponse ::
+  String ->
+  [(String, Maybe String)] ->
+  IO (Either AuthError DeviceAuthResponse)
+fetchDeviceAuthResponse url queries = do
+  sendRequest POST RequestBodyForm url queries
+    >>= \case
+      Left err -> return $ Left $ Unknown err
+      Right resp ->
+        case eitherDecodeStrict resp :: Either String DeviceAuthResponse of
+          Left err -> return $ Left $ Unknown err
+          Right rec -> return $ Right rec
 
 renewAccessToken :: Environment -> Maybe String -> Maybe String -> IO (Either AuthError AuthRecord)
 renewAccessToken _ Nothing _ = return $ Left $ Unknown "renewAccessToken: Nothing as service string argument"
@@ -308,6 +331,31 @@ getAccessToken env serv redirectURI authcode = do
     (fromJust api.token_params_mode)
     (fromJust api.token_endpoint)
     qs
+
+pollForToken :: ServiceAPI -> DeviceAuthResponse -> IO (Either AuthError AuthRecord)
+pollForToken api deviceAuth = do
+  let qs =
+        [ ("tenant", api.tenant),
+          ("grant_type", Just "urn:ietf:params:oauth:grant-type:device_code"),
+          ("client_id", Just api.client_id),
+          ("device_code", Just (device_code deviceAuth))
+        ]
+  let int = fromMaybe 5 $ interval deviceAuth
+  let poll :: Int -> IO (Either AuthError AuthRecord)
+      poll n = do
+        threadDelay $ (n * 5 + int) * 1_000_000
+        res <-
+          fetchAuthRecord
+            (fromJust api.token_http_method)
+            (fromJust api.token_params_mode)
+            (fromJust api.token_endpoint)
+            qs
+        case res of
+          Right authRec -> return $ Right authRec
+          Left AuthorizationPending -> poll n
+          Left SlowDown -> poll (n + 1)
+          Left err -> return $ Left err
+  poll 0
 
 data Page = Redirect String | Content BSU.ByteString
 
@@ -424,25 +472,44 @@ authorizeEmail env servName email_ noHint = do
     Nothing -> error $ "authorizeEmail: Can't find such service: " ++ servName
     Just _ -> do
       api <- getServiceAPI env servName
-      portnumber <- getRandomFreePort
-      let redirectURI = api.redirect_uri <|> Just (printf "http://localhost:%d" portnumber)
-      mvar <- newEmptyMVar
-      _ <- forkIO $ localWebServer mvar env (fromJust redirectURI) servName email_ noHint
-      printf
-        "Authorization to grant OAuth2 access to %s started ... \n"
-        (unEmailAddress email_)
-      let (hostname, portno, _) = getHostandPort $ fromJust redirectURI
-      printf "Visit http://%s:%d/start in your browser ...\n" hostname portno
-      takeMVar mvar
-        >>= \case
-          AuthSuccess -> do
-            printf "Received refresh and access tokens ...\n"
-            if env.config.encryption == KEYRING
-              then printf "They have been stored in the keyring of your password manager. ...\n"
-              else
-                printf
-                  "They have been saved in %s encrypted ...\n"
-                  (env.state_dir <> "/" <> email_.unEmailAddress <> ".oama")
-          AuthFailure -> printf "ERROR - Authorization failed.\n"
+      if isJust api.client_secret
+        then do
+          -- auth code flow
+          mvar <- newEmptyMVar
+          portnumber <- getRandomFreePort
+          let redirectURI = api.redirect_uri <|> Just (printf "http://localhost:%d" portnumber)
+          _ <- forkIO $ localWebServer mvar env (fromJust redirectURI) servName email_ noHint
+          printf
+            "Authorization to grant OAuth2 access to %s started ... \n"
+            (unEmailAddress email_)
+          let (hostname, portno, _) = getHostandPort $ fromJust redirectURI
+          printf "Visit http://%s:%d/start in your browser ...\n" hostname portno
+          takeMVar mvar
+            >>= \case
+              AuthSuccess -> do
+                printf "Received refresh and access tokens ...\n"
+                if env.config.encryption == KEYRING
+                  then printf "They have been stored in the keyring of your password manager. ...\n"
+                  else
+                    printf
+                      "They have been saved in %s encrypted ...\n"
+                      (env.state_dir <> "/" <> email_.unEmailAddress <> ".oama")
+              AuthFailure -> printf "ERROR - Authorization failed.\n"
+        else do
+          -- device code flow
+          deviceAuthRes <- requestDeviceAuth env servName
+          authRes <- case deviceAuthRes of
+            Left err -> error $ "authorizeEmail:\n" ++ show err
+            Right deviceAuth -> do
+              printf "Visit:\n%s\n\nand enter the code:\n%s\n" deviceAuth.verification_uri deviceAuth.user_code
+              pollForToken api deviceAuth
+          case authRes of
+            Left err -> error $ "authorizeEmail:\n" ++ show err
+            Right authr -> do
+              now <- getCurrentTime
+              let expire = addUTCTime (expires_in authr - 300) now
+                  expDate = formatTime defaultTimeLocale timeStampFormat expire
+                  authRec = authr {exp_date = Just expDate, email = Just email_, service = Just servName}
+              putAuthRecord env email_ authRec
       threadDelay 5_000_000
       printf "... done.\n"
