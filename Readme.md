@@ -78,10 +78,13 @@ services you are going to use. There are two kinds of services the *builtin*
 ones which `oama` already knows and the *user configured* ones. The current
 *builtin* services are `google` and `microsoft`.
 
-For a *builtin* service the minimum information you need to provide are
-`client_id` and `client_secret`. For *user configured* service there are a few
-more required config options. See the initially created config file for more
-details.
+For a *builtin* service the minimum information you need to provide is
+`client_id`. When using the *device code flow* authorization method
+`client_secret` is not needed. Other authorization methods most likely need
+`client_secret`.
+
+For *user configured* service there are a few more required config options. See
+the initially created config file for more details.
 
 You can see **all the configurable options** in the `services:` section of
 the output of the `oama printenv` command.
@@ -110,10 +113,14 @@ Invoke `oama` with no login hint:
 ### Microsoft accounts
 
 The default `tenant` for a Microsoft account is `common` which is also
-included in the `auth_endpoint` and `token_endpoint` URL-s. If you need to
+included in the `auth_endpoint` and `token_endpoint` URLs. If you need to
 use a different `tenant` value then it is enough to specify only the `tenant`
-field the `*_endpoint` URL-s will be automatically changed too.
+field the `*_endpoint` URLs will be automatically changed too.
  
+Microsoft now also accepts authorization requests with *device code flow* what
+you can invoke with the `--device` option. In this case you need to provide `client_id`
+only.
+
 #### Microsoft Organizational Account
 
 Invoke `oama` using your proper organizational email:
@@ -133,7 +140,16 @@ below:
 
 After configuration, you must run the `authorize` command:
 
-    oama authorize <service> <email>
+    Usage: oama authorize <service> <email> [--nohint] [--device]
+
+      Authorize OAuth2 for service/email
+
+    Available options:
+      <service>                Service name
+      <email>                  Email address
+      --nohint                 Don't pass login hint
+      --device                 Use OAuth device code flow (RFC 8628)
+      -h,--help                Show this help text
 
 That is an interactive process involving a browser since you need to login
 and authorize access to your email account. `oama` will lead you through this

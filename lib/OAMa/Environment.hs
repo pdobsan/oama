@@ -118,7 +118,8 @@ builtinServices =
       ),
       ( "microsoft",
         defaultServiceAPI
-          { auth_endpoint = Just "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+          { auth_endpoint = Just "https://login.microsoftonline.com/common/oauth2/v2.0/devicecode",
+            -- auth_endpoint = Just "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
             auth_http_method = Just GET,
             token_params_mode = Just RequestBodyForm,
             token_endpoint = Just "https://login.microsoftonline.com/common/oauth2/v2.0/token",
@@ -131,9 +132,6 @@ builtinServices =
           }
       )
     ]
-
--- defaultPort :: Int
--- defaultPort = 8080
 
 -- | Structure of the configuration YAML file
 data Configuration = Configuration
@@ -379,13 +377,19 @@ services:
     client_secret: application-CLIENT-SECRET
   #  auth_scope: https://mail.google.com/
 
-  # microsoft:
-  #   client_id: application-CLIENT-ID 
-  #   client_secret: application-CLIENT_SECRET
-  #   auth_scope: https://outlook.office.com/IMAP.AccessAsUser.All
+  microsoft:
+     client_id: application-CLIENT-ID 
+  ## client_secret is not needed for device code flow
+  #  auth_endpoint: https://login.microsoftonline.com/common/oauth2/v2.0/devicecode
+  ##
+  ## client_secret might be needed for other authorization flows
+  #  client_secret: application-CLIENT_SECRET
+  #  auth_endpoint: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
+  #   
+  #  auth_scope: https://outlook.office.com/IMAP.AccessAsUser.All
   #     https://outlook.office.com/SMTP.Send
   #     offline_access
-  #   tenant: common
+  #  tenant: common
 
   ## User configured providers
   ## Required fields: client_id, client_secret, auth_endpoint, auth_scope, token_endpoint  

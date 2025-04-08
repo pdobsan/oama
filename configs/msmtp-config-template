@@ -29,5 +29,18 @@ port 587
 tls on
 tls_trust_file /etc/ssl/certs/ca-certificates.crt
 
+# Microsoft account
+#
+account YOUR_EMAIL_NAME@outlook.com
+from YOUR_EMAIL_NAME@outlook.com
+user YOUR_EMAIL_NAME@outlook.com
+auth xoauth2
+passwordeval oama access YOUR_EMAIL_NAME@outlook.com
+host smtp-mail.outlook.com
+port 587
+tls on
+tls_starttls on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+
 ### ...
 
