@@ -388,6 +388,21 @@ generateAuthPage env serv redirectURI email_ noHint = do
           endpoint
           qs
 
+storeAuthRecord :: Environment -> String -> EmailAddress -> AuthRecord -> IO ()
+storeAuthRecord env servName email_ authr = do
+  now <- getCurrentTime
+  let expire = addUTCTime (expires_in authr - 300) now
+      expDate = formatTime defaultTimeLocale timeStampFormat expire
+      authRec = authr {exp_date = Just expDate, email = Just email_, service = Just servName}
+  putAuthRecord env email_ authRec
+  printf "Received refresh and access tokens ...\n"
+  if env.config.encryption == KEYRING
+    then printf "They have been stored in the keyring of your password manager. ...\n"
+    else
+      printf
+        "They have been saved in %s encrypted ...\n"
+        (env.state_dir <> "/" <> email_.unEmailAddress <> ".oama")
+
 data AuthResult = AuthSuccess | AuthFailure
 
 localWebServer ::
@@ -419,11 +434,7 @@ localWebServer mvar env redirectURI serv email_ noHint = do
                     liftIO $ putMVar mvar AuthFailure
                     error $ "localWebServer:\n" ++ show errmsg
                   Right authr -> do
-                    now <- liftIO getCurrentTime
-                    let expire = addUTCTime (expires_in authr - 300) now
-                        expDate = formatTime defaultTimeLocale timeStampFormat expire
-                        authRec = authr {exp_date = Just expDate, email = Just email_, service = Just serv}
-                    liftIO $ putAuthRecord env email_ authRec
+                    liftIO $ storeAuthRecord env serv email_ authr
                     liftIO $ putMVar mvar AuthSuccess
                     TW.send $
                       TW.html $
@@ -466,14 +477,25 @@ localWebServer mvar env redirectURI serv email_ noHint = do
         Warp.runSettings localhostWebServer $ foldr ($) (TW.notFound missing) routes
 
 -- when this function is called we always start from scratch
-authorizeEmail :: Environment -> String -> EmailAddress -> Bool -> IO ()
-authorizeEmail env servName email_ noHint = do
+authorizeEmail :: Environment -> String -> EmailAddress -> Bool -> Bool -> IO ()
+authorizeEmail env servName email_ noHint device = do
   case Map.lookup servName env.services of
     Nothing -> error $ "authorizeEmail: Can't find such service: " ++ servName
     Just _ -> do
       api <- getServiceAPI env servName
-      if isJust api.client_secret
+      if device
         then do
+          -- device code flow
+          deviceAuthRes <- requestDeviceAuth env servName
+          authRes <- case deviceAuthRes of
+            Left err -> error $ "authorizeEmail:\n" ++ show err
+            Right deviceAuth -> do
+              printf "Visit:\n%s\n\nand enter the code:\n%s\n" deviceAuth.verification_uri deviceAuth.user_code
+              pollForToken api deviceAuth
+          case authRes of
+            Left err -> error $ "authorizeEmail:\n" ++ show err
+            Right authr -> storeAuthRecord env servName email_ authr
+        else do
           -- auth code flow
           mvar <- newEmptyMVar
           portnumber <- getRandomFreePort
@@ -486,30 +508,7 @@ authorizeEmail env servName email_ noHint = do
           printf "Visit http://%s:%d/start in your browser ...\n" hostname portno
           takeMVar mvar
             >>= \case
-              AuthSuccess -> do
-                printf "Received refresh and access tokens ...\n"
-                if env.config.encryption == KEYRING
-                  then printf "They have been stored in the keyring of your password manager. ...\n"
-                  else
-                    printf
-                      "They have been saved in %s encrypted ...\n"
-                      (env.state_dir <> "/" <> email_.unEmailAddress <> ".oama")
+              AuthSuccess -> threadDelay 5_000_000
               AuthFailure -> printf "ERROR - Authorization failed.\n"
-        else do
-          -- device code flow
-          deviceAuthRes <- requestDeviceAuth env servName
-          authRes <- case deviceAuthRes of
-            Left err -> error $ "authorizeEmail:\n" ++ show err
-            Right deviceAuth -> do
-              printf "Visit:\n%s\n\nand enter the code:\n%s\n" deviceAuth.verification_uri deviceAuth.user_code
-              pollForToken api deviceAuth
-          case authRes of
-            Left err -> error $ "authorizeEmail:\n" ++ show err
-            Right authr -> do
-              now <- getCurrentTime
-              let expire = addUTCTime (expires_in authr - 300) now
-                  expDate = formatTime defaultTimeLocale timeStampFormat expire
-                  authRec = authr {exp_date = Just expDate, email = Just email_, service = Just servName}
-              putAuthRecord env email_ authRec
-      threadDelay 5_000_000
       printf "... done.\n"
+

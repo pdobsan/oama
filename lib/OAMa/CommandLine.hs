@@ -25,7 +25,7 @@ data Command
   = Oauth2 String
   | ShowCreds String
   | Renew String
-  | Authorize String String Bool
+  | Authorize String String Bool Bool
   | PrintEnv
   | PrintTemplate
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
@@ -88,6 +88,7 @@ authorizeOptions =
     <$> strArgument (metavar "<service>" <> help "Service name")
     <*> strArgument (metavar "<email>" <> help "Email address")
     <*> switch (long "nohint" <> help "Don't pass login hint")
+    <*> switch (long "device" <> help "Use OAuth device code flow (RFC 8628)")
 
 printEnv :: Mod CommandFields Command
 printEnv = command "printenv" (info (pure PrintEnv) (progDesc "Print the current runtime environment"))
