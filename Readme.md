@@ -1,7 +1,7 @@
 # **oama** - OAuth credential MAnager
 
 <p align="center" width="100%">
-  <img width="22%" src="oama-fish.jpg" alt="🐟">
+  <img width="22%" src="oama-fish.jpg">
 </p>
 
 ## Synopsis
