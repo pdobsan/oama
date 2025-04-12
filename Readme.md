@@ -1,6 +1,10 @@
 # **oama** - OAuth credential MAnager
 
-## Synopsys
+<p align="center" width="100%">
+  <img width="22%" src="oama-fish.jpg" alt="🐟">
+</p>
+
+## Synopsis
 
 Many IMAP/SMTP clients, like [msmtp](https://marlam.de/msmtp/),
 [fdm](https://github.com/nicm/fdm),
@@ -13,6 +17,8 @@ smart password manager. In particular, access token renewal happens
 automatically in the background transparent to the user.
 
 The OAuth2 credentials are kept *encrypted* in a **back end**.
+
+Oama also refers to juvenile goatfish in Hawaii. 
 
 ### Provided back-end methods
 
