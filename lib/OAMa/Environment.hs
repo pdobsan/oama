@@ -79,9 +79,6 @@ data ServiceAPI = ServiceAPI
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
--- defualtRedirectURI :: String
--- defualtRedirectURI = "http://localhost:8080"
-
 defaultServiceAPI :: ServiceAPI
 defaultServiceAPI =
   ServiceAPI

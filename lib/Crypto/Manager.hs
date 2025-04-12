@@ -58,7 +58,7 @@ decryptFile f = do
           >>= \case
             Left err -> return $ Left $ DecryptError (show err)
             Right o -> return $ Right (BSU.toString o)
-    else pure $ Left $ FileError $ printf "Can't open file: %s\n" f
+    else pure $ Left $ FileError $ printf "Can't open file: %s" f
 
 encryptFile :: FilePath -> Secret -> KeyID -> IO (Either SecretToolsError String)
 encryptFile f s k = do
@@ -153,28 +153,24 @@ decryptFile f = do
         then return $ Right o
         else
           pure $ Left $ DecryptError e
-    else pure $ Left $ FileError $ printf "Can't open file: %s\n" f
+    else pure $ Left $ FileError $ printf "Can't open file: %s" f
 
 encryptFile :: FilePath -> Secret -> KeyID -> IO (Either SecretToolsError String)
 encryptFile f s k = do
-  fOk <- D.doesFileExist f
-  if fOk
+  (Just h, _, _, p) <-
+    P.createProcess
+      (P.proc "gpg" ["--encrypt", "--recipient", k, "-o", f ++ ".tmp"])
+        { P.std_in = P.CreatePipe
+        }
+  IO.hPutStr h s
+  IO.hFlush h
+  IO.hClose h
+  x <- P.waitForProcess p
+  if x == ExitSuccess
     then do
-      (Just h, _, _, p) <-
-        P.createProcess
-          (P.proc "gpg" ["--encrypt", "--recipient", k, "-o", f ++ ".tmp"])
-            { P.std_in = P.CreatePipe
-            }
-      IO.hPutStr h s
-      IO.hFlush h
-      IO.hClose h
-      x <- P.waitForProcess p
-      if x == ExitSuccess
-        then do
-          D.renameFile (f ++ ".tmp") f
-          pure $ Right "gpg encryption succeded."
-        else pure $ Left $ EncryptError "gpg encryption failed."
-    else pure $ Left $ FileError $ printf "Can't open file: %s\n" f
+      D.renameFile (f ++ ".tmp") f
+      pure $ Right "gpg encryption succeded."
+    else pure $ Left $ EncryptError "gpg encryption failed."
 
 type Attribute = String
 
