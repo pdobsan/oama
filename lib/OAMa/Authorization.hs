@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NumericUnderscores #-}
@@ -5,14 +6,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE CPP #-}
 
-module OAMa.Authorization
-  ( authorizeEmail,
-    getEmailAuth,
-    forceRenew,
-    showCreds,
-  )
+module OAMa.Authorization (
+  authorizeEmail,
+  getEmailAuth,
+  forceRenew,
+  showCreds,
+)
 where
 
 import Control.Applicative ((<|>))
@@ -62,38 +62,38 @@ import Web.Twain qualified as TW
 getAuthRecord :: Environment -> EmailAddress -> IO AuthRecord
 getAuthRecord env email_ = do
   getAR env.config.encryption
-  where
-    getAR KEYRING = do
-      lookupSecret "oama" email_.unEmailAddress
-        >>= \case
-          Right o ->
-            case eitherDecode' (BLU.fromString o) :: Either String AuthRecord of
-              Left err -> error $ "readAuthRecord:\n" ++ err
-              Right rec -> return rec
-          Left e -> do
-            printf "%s\n" (show e)
-            logger Error (show e)
-            exitFailure
-    getAR (GPG _) = do
-      let gpgFile = env.state_dir <> "/" <> email_.unEmailAddress <> ".oama"
-      authRecExist <- D.doesFileExist gpgFile
-      if authRecExist
-        then do
-          decryptFile gpgFile
-            >>= \case
-              Right o -> do
-                case eitherDecode' (BLU.fromString o) :: Either String AuthRecord of
-                  Left err -> error $ "readAuthRecord:\n" ++ err
-                  Right rec -> return rec
-              Left e -> do
-                printf "%s\n" (show e)
-                logger Error (show e)
-                exitFailure
-        else do
-          printf "Can't find authorization record for %s\n" (unEmailAddress email_)
-          printf "You must run `oama authorize ...` before using other operations.\n"
-          logger Error $ printf "Can't find authorization record for %s\n" (unEmailAddress email_)
+ where
+  getAR KEYRING = do
+    lookupSecret "oama" email_.unEmailAddress
+      >>= \case
+        Right o ->
+          case eitherDecode' (BLU.fromString o) :: Either String AuthRecord of
+            Left err -> error $ "readAuthRecord:\n" ++ err
+            Right rec -> return rec
+        Left e -> do
+          printf "%s\n" (show e)
+          logger Error (show e)
           exitFailure
+  getAR (GPG _) = do
+    let gpgFile = env.state_dir <> "/" <> email_.unEmailAddress <> ".oama"
+    authRecExist <- D.doesFileExist gpgFile
+    if authRecExist
+      then do
+        decryptFile gpgFile
+          >>= \case
+            Right o -> do
+              case eitherDecode' (BLU.fromString o) :: Either String AuthRecord of
+                Left err -> error $ "readAuthRecord:\n" ++ err
+                Right rec -> return rec
+            Left e -> do
+              printf "%s\n" (show e)
+              logger Error (show e)
+              exitFailure
+      else do
+        printf "Can't find authorization record for %s\n" (unEmailAddress email_)
+        printf "You must run `oama authorize ...` before using other operations.\n"
+        logger Error $ printf "Can't find authorization record for %s\n" (unEmailAddress email_)
+        exitFailure
 
 putAuthRecord :: Environment -> EmailAddress -> AuthRecord -> IO ()
 putAuthRecord env email_ rec = do
@@ -195,15 +195,15 @@ sendRequest httpMethod paramsMode url params = do
       let ps = [bimap BSU.fromString (BSU.fromString <$>) x | x <- params_]
           req' = setRequestQueryString ps req
       runPost req'
-  where
-    runPost query = do
-      (try $ httpBS query :: IO (Either HttpException (Response BSU.ByteString)))
-        >>= \case
-          Left (HttpExceptionRequest _ x) -> return $ Left $ show x
-          Left (InvalidUrlException u _) -> return $ Left u
-          Right resp -> do
-            let body = getResponseBody resp
-            return $ Right body
+ where
+  runPost query = do
+    (try $ httpBS query :: IO (Either HttpException (Response BSU.ByteString)))
+      >>= \case
+        Left (HttpExceptionRequest _ x) -> return $ Left $ show x
+        Left (InvalidUrlException u _) -> return $ Left u
+        Right resp -> do
+          let body = getResponseBody resp
+          return $ Right body
 
 fetchAuthRecord ::
   HTTPMethod ->
@@ -217,11 +217,11 @@ fetchAuthRecord httpMethod paramsMode url queries = do
       Left err -> return $ Left $ Unknown err
       Right resp -> do
         return $ maybe (Left $ decodeAuthError resp) Right $ decodeStrict resp
-  where
-    decodeAuthError :: BSU.ByteString -> AuthError
-    decodeAuthError bs = case eitherDecodeStrict bs :: Either String AuthError of
-      Left err -> Unknown err
-      Right rec -> rec
+ where
+  decodeAuthError :: BSU.ByteString -> AuthError
+  decodeAuthError bs = case eitherDecodeStrict bs :: Either String AuthError of
+    Left err -> Unknown err
+    Right rec -> rec
 
 fetchDeviceAuthResponse ::
   String ->
@@ -378,7 +378,7 @@ generateAuthPage env serv redirectURI email_ noHint = do
     GET -> do
       let urlBase = fromJust $ URI.parseURI endpoint
           bsQuery = bimap BSU.fromString (fmap BSU.fromString) <$> qs
-          url = urlBase {URI.uriQuery = BSU.toString $ renderQuery True bsQuery}
+          url = urlBase{URI.uriQuery = BSU.toString $ renderQuery True bsQuery}
       pure $ Right $ Redirect $ show url
     POST ->
       fmap Content
@@ -393,7 +393,7 @@ storeAuthRecord env servName email_ authr = do
   now <- getCurrentTime
   let expire = addUTCTime (expires_in authr - 300) now
       expDate = formatTime defaultTimeLocale timeStampFormat expire
-      authRec = authr {exp_date = Just expDate, email = Just email_, service = Just servName}
+      authRec = authr{exp_date = Just expDate, email = Just email_, service = Just servName}
   putAuthRecord env email_ authRec
   printf "Received refresh and access tokens ...\n"
   if env.config.encryption == KEYRING
@@ -511,4 +511,3 @@ authorizeEmail env servName email_ noHint device = do
               AuthSuccess -> threadDelay 5_000_000
               AuthFailure -> printf "ERROR - Authorization failed.\n"
       printf "... done.\n"
-

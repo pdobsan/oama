@@ -7,30 +7,36 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 
-module OAMa.Environment
-  ( AuthRecord (..),
-    AuthError (..),
-    DeviceAuthResponse (device_code, user_code, verification_uri, verification_uri_complete, interval),
-    Configuration (..),
-    Environment (..),
-    ServiceAPI (..),
-    Encryption (..),
-    EmailAddress (..),
-    HTTPMethod (..),
-    ParamsMode (..),
-    checkInit,
-    loadEnvironment,
-    getServiceAPI,
-    pprintEnv,
-    printTemplate,
-    logger,
-  )
+module OAMa.Environment (
+  AuthRecord (..),
+  AuthError (..),
+  DeviceAuthResponse (device_code, user_code, verification_uri, verification_uri_complete, interval),
+  Configuration (..),
+  Environment (..),
+  ServiceAPI (..),
+  Encryption (..),
+  EmailAddress (..),
+  HTTPMethod (..),
+  ParamsMode (..),
+  checkInit,
+  loadEnvironment,
+  getServiceAPI,
+  pprintEnv,
+  printTemplate,
+  logger,
+)
 where
 
 import Control.Applicative ((<|>))
 import Control.Monad (when)
 import Crypto.Manager (secretMethod)
-import Data.Aeson.Types (Options (allNullaryToStringTag, constructorTagModifier, sumEncoding), SumEncoding (..), camelTo2, defaultOptions, genericParseJSON)
+import Data.Aeson.Types (
+  Options (allNullaryToStringTag, constructorTagModifier, sumEncoding),
+  SumEncoding (..),
+  camelTo2,
+  defaultOptions,
+  genericParseJSON,
+ )
 import Data.ByteString.UTF8 qualified as BSU
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
@@ -163,11 +169,29 @@ data AuthRecord = AuthRecord
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
-data AuthError = InvalidGrant | InvalidRequest | UnauthorizedClient | AccessDenied | UnsupportedResponseType | InvalidScope | ServerError | TemporarilyUnavailable | AuthorizationPending | SlowDown | ExpiredToken | Unknown String
+data AuthError
+  = InvalidGrant
+  | InvalidRequest
+  | UnauthorizedClient
+  | AccessDenied
+  | UnsupportedResponseType
+  | InvalidScope
+  | ServerError
+  | TemporarilyUnavailable
+  | AuthorizationPending
+  | SlowDown
+  | ExpiredToken
+  | Unknown String
   deriving (Show, Generic)
 
 instance Yaml.FromJSON AuthError where
-  parseJSON = genericParseJSON defaultOptions {constructorTagModifier = camelTo2 '_', allNullaryToStringTag = False, sumEncoding = TaggedObject "error" "raw"}
+  parseJSON =
+    genericParseJSON
+      defaultOptions
+        { constructorTagModifier = camelTo2 '_',
+          allNullaryToStringTag = False,
+          sumEncoding = TaggedObject "error" "raw"
+        }
 
 data DeviceAuthResponse = DeviceAuthResponse
   { device_code :: String,
@@ -208,7 +232,7 @@ adjustEndpoints ms =
   let tenant' = fromJust ms.tenant
       auth_endpoint' = sReplace "common" tenant' (fromJust ms.auth_endpoint)
       token_endpoint' = sReplace "common" tenant' (fromJust ms.token_endpoint)
-   in ms {auth_endpoint = Just auth_endpoint', token_endpoint = Just token_endpoint'}
+   in ms{auth_endpoint = Just auth_endpoint', token_endpoint = Just token_endpoint'}
 
 getConfiguredServices :: Configuration -> Services
 getConfiguredServices conf =
@@ -219,10 +243,10 @@ getConfiguredServices conf =
    in case Map.lookup "microsoft" servs of
         Just _ -> Map.adjust adjustEndpoints "microsoft" servs
         Nothing -> servs
-  where
-    update :: (String, ServiceAPI) -> (String, Maybe ServiceAPI) -> (String, ServiceAPI)
-    update (name, configured) (_, Just builtin) = (name, updateServiceAPI builtin configured)
-    update (name, configured) (_, Nothing) = (name, updateServiceAPI defaultServiceAPI configured)
+ where
+  update :: (String, ServiceAPI) -> (String, Maybe ServiceAPI) -> (String, ServiceAPI)
+  update (name, configured) (_, Just builtin) = (name, updateServiceAPI builtin configured)
+  update (name, configured) (_, Nothing) = (name, updateServiceAPI defaultServiceAPI configured)
 
 loadEnvironment :: IO Environment
 loadEnvironment = do
@@ -321,14 +345,14 @@ uname = do
 
 getServiceAPI :: Environment -> String -> IO ServiceAPI
 getServiceAPI env serv = foo (Map.lookup serv env.services)
-  where
-    foo :: Maybe ServiceAPI -> IO ServiceAPI
-    foo (Just servapi) = return servapi
-    foo Nothing = do
-      printf "ERROR - No service named '%s' is configured.\n" serv
-      printf "        Run`oama printenv` and check its output.\n"
-      logger Error $ printf "ERROR - No service named '%s' is configured.\n" serv
-      exitFailure
+ where
+  foo :: Maybe ServiceAPI -> IO ServiceAPI
+  foo (Just servapi) = return servapi
+  foo Nothing = do
+    printf "ERROR - No service named '%s' is configured.\n" serv
+    printf "        Run`oama printenv` and check its output.\n"
+    logger Error $ printf "ERROR - No service named '%s' is configured.\n" serv
+    exitFailure
 
 logger :: Priority -> String -> IO ()
 logger pri msg = withCStringLen msg $ syslog Nothing pri

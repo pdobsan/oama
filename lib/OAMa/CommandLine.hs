@@ -15,9 +15,9 @@ import Options.Applicative
 import Paths_oama (version)
 
 data Opts = Opts
-  { optConfig :: !String
-  , optDebug :: !Bool
-  , optCommand :: !Command
+  { optConfig :: !String,
+    optDebug :: !Bool,
+    optCommand :: !Command
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
