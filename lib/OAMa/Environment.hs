@@ -163,7 +163,7 @@ data AuthRecord = AuthRecord
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
-data AuthError = InvalidRequest | UnauthorizedClient | AccessDenied | UnsupportedResponseType | InvalidScope | ServerError | TemporarilyUnavailable | AuthorizationPending | SlowDown | ExpiredToken | Unknown String
+data AuthError = InvalidGrant | InvalidRequest | UnauthorizedClient | AccessDenied | UnsupportedResponseType | InvalidScope | ServerError | TemporarilyUnavailable | AuthorizationPending | SlowDown | ExpiredToken | Unknown String
   deriving (Show, Generic)
 
 instance Yaml.FromJSON AuthError where
