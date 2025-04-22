@@ -9,6 +9,7 @@
 Many IMAP/SMTP clients, like [msmtp](https://marlam.de/msmtp/),
 [fdm](https://github.com/nicm/fdm),
 [isync](http://isync.sourceforge.net/),
+[aerc](https://aerc-mail.org/),
 [neomutt](https://github.com/neomutt/neomutt) or
 [mutt](http://www.mutt.org/) can use OAuth2 access tokens but lack the
 ability to renew and/or authorize OAuth2 credentials. The purpose of
@@ -16,13 +17,13 @@ ability to renew and/or authorize OAuth2 credentials. The purpose of
 smart password manager. In particular, access token renewal happens
 automatically in the background transparent to the user.
 
-The OAuth2 credentials are kept *encrypted* in a **back end**.
+The OAuth2 credentials are kept *encrypted* in a **backend**.
 
-Oama also refers to juvenile goatfish in Hawaii. 
+In Hawaii the word *oama* refers to juvenile goatfish.
 
 ### Provided back-end methods
 
-- [GNU PG](https://www.gnupg.org/) **encrypted files**.  These files are kept
+- [GNU PG](https://www.gnupg.org/) **encrypted files**. These files are kept
   in the `$XDG_STATE_HOME/oama` directory. If the `XDG_STATE_HOME`
   environment variable is not set then it defaults to `$HOME/.local/state`.
 
@@ -96,6 +97,17 @@ You can see **all the configurable options** in the `services:` section of
 the output of the `oama printenv` command.
 
 ### Application `client_id` and `client_secret`
+
+There are also `client_id_cmd` and `client_secret_cmd` config parameters if you
+want to keep these parameters in a password manager.
+
+    client_secret = <my-client-secret>
+    # or alternatively get it from a password manager like pass
+    client_secret_cmd = |
+      pass email/my-app | head -1 
+
+Most likely you use one of the methods but if both are present then the
+`*_cmd` variants get the priority.
 
 For institutional accounts your organization should provide the
 `client_{id,secret}` pair regardless who is the service provider.

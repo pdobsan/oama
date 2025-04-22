@@ -3,9 +3,9 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultilineStrings #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
 
 module OAMa.Environment (
   AuthRecord (..),
@@ -38,10 +38,10 @@ import Data.Aeson.Types (
   genericParseJSON,
  )
 import Data.ByteString.UTF8 qualified as BSU
+import Data.Char (isSpace)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromJust)
-import Data.String.QQ
 import Data.Strings (sReplace, strDrop, strStartsWith)
 import Data.Time.Clock
 import Data.Version (showVersion)
@@ -80,8 +80,10 @@ data ServiceAPI = ServiceAPI
     tenant :: Maybe String,
     access_type :: Maybe String,
     prompt :: Maybe String,
-    client_id :: String,
-    client_secret :: Maybe String
+    client_id :: Maybe String,
+    client_id_cmd :: Maybe String,
+    client_secret :: Maybe String,
+    client_secret_cmd :: Maybe String
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
 
@@ -99,8 +101,10 @@ defaultServiceAPI =
       tenant = Nothing,
       access_type = Nothing,
       prompt = Nothing,
-      client_id = "application-CLIENT-ID",
-      client_secret = Just "application-CLIENT-SECRET"
+      client_id = Nothing,
+      client_id_cmd = Nothing,
+      client_secret = Nothing,
+      client_secret_cmd = Nothing
     }
 
 type Services = Map String ServiceAPI
@@ -114,9 +118,7 @@ builtinServices =
             token_endpoint = Just "https://accounts.google.com/o/oauth2/token",
             auth_scope = Just "https://mail.google.com/",
             access_type = Just "offline",
-            prompt = Just "consent",
-            client_id = "application-CLIENT-ID",
-            client_secret = Just "application-CLIENT-SECRET"
+            prompt = Just "consent"
           }
       ),
       ( "microsoft",
@@ -129,9 +131,7 @@ builtinServices =
             auth_scope =
               Just
                 "https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/POP.AccessAsUser.All https://outlook.office.com/SMTP.Send offline_access",
-            tenant = Just "common",
-            client_id = "application-CLIENT-ID",
-            client_secret = Just "application-CLIENT-SECRET"
+            tenant = Just "common"
           }
       )
     ]
@@ -223,7 +223,9 @@ updateServiceAPI def cfg =
       access_type = cfg.access_type <|> def.access_type,
       prompt = cfg.prompt <|> def.prompt,
       client_id = cfg.client_id,
-      client_secret = cfg.client_secret
+      client_id_cmd = cfg.client_id_cmd,
+      client_secret = cfg.client_secret,
+      client_secret_cmd = cfg.client_secret_cmd
     }
 
 -- replace ".../common/..." with ".../tenant/..." in endpoints
@@ -248,6 +250,47 @@ getConfiguredServices conf =
   update (name, configured) (_, Just builtin) = (name, updateServiceAPI builtin configured)
   update (name, configured) (_, Nothing) = (name, updateServiceAPI defaultServiceAPI configured)
 
+lstrip :: String -> String
+lstrip = dropWhile isSpace
+
+rstrip :: String -> String
+rstrip = reverse . lstrip . reverse
+
+strip :: String -> String
+strip = lstrip . rstrip
+
+execCmd :: Maybe String -> IO (Maybe String)
+execCmd (Just cmd) = do
+  let shell = Proc.shell cmd
+  (x, o, e) <- Proc.readCreateProcessWithExitCode shell ""
+  if x == ExitSuccess
+    then return (Just $ strip o)
+    else do
+      printf "Failed to execute shell command: %s\n%s\n" cmd e
+      exitFailure
+execCmd Nothing = pure Nothing
+
+-- | process id/secret_cmd-s in all configured services
+processCmds :: Configuration -> IO Services
+processCmds cfg = do
+  let servs = getConfiguredServices cfg
+  mapM updateIdSecret servs
+ where
+  updateIdSecret :: ServiceAPI -> IO ServiceAPI
+  updateIdSecret sapi = do
+    idCmdResult <- execCmd sapi.client_id_cmd
+    secretCmdResult <- execCmd sapi.client_secret_cmd
+    -- id/secret fields are updated with CmdResult-s if any
+    -- priority given to CmdResult-s
+    -- _cmd fields are ereased
+    return
+      sapi
+        { client_id = idCmdResult <|> sapi.client_id,
+          client_id_cmd = Nothing,
+          client_secret = secretCmdResult <|> sapi.client_secret,
+          client_secret_cmd = Nothing
+        }
+
 loadEnvironment :: IO Environment
 loadEnvironment = do
   (defaultConfigFile, stateDir) <- checkInit
@@ -259,6 +302,7 @@ loadEnvironment = do
           then defaultConfigFile
           else defaultOptsConfig
   cfg <- readConfig configFile :: IO Configuration
+  services_ <- processCmds cfg
   when (cfg.encryption == KEYRING) $ do
     -- libsecret based keyrings need this envvar set
     dbus <- lookupEnv "DBUS_SESSION_BUS_ADDRESS"
@@ -272,7 +316,8 @@ loadEnvironment = do
         state_dir = stateDir,
         config_file = configFile,
         config = cfg,
-        services = getConfiguredServices cfg,
+        -- services = getConfiguredServices cfg,
+        services = services_,
         options = opts
       }
 
@@ -364,62 +409,73 @@ initialConfig :: String
 initialConfig =
   "## oama version "
     <> showVersion version
-    ++ [s|
+    <> """
 
+       ## This is a YAML configuration file, indentation matters.
+       ## Double ## indicates comments while single # default values.
+       ## Not all defaults are shown, for full list run `oama printenv`
+       ## and look at the `services:` section.
 
-## This is a YAML configuration file, indentation matters.
-## Double ## indicates comments while single # default values.
-## Not all defaults are shown, for full list run `oama printenv`
-## and look at the `services:` section.
+       ## Possible options for keeping refresh and access tokens:
+       ## GPG - in a gpg encrypted file $XDG_STATE_HOME/oama/<email-address>.oauth
+       ##       (XDG_STATE_HOME defaults to ~/.local/state)
+       ## GPG - in a gpg encrypted file ~/.local/state/oama/<email-address>.oauth
+       ## KEYRING - in the keyring of a password manager with Secret Service API
+       ##
+       ## Choose exactly one.
 
-## Possible options for keeping refresh and access tokens:
-## GPG - in a gpg encrypted file $XDG_STATE_HOME/oama/<email-address>.oauth
-##       (XDG_STATE_HOME defaults to ~/.local/state)
-## GPG - in a gpg encrypted file ~/.local/state/oama/<email-address>.oauth
-## KEYRING - in the keyring of a password manager with Secret Service API
-##
-## Choose exactly one.
+       encryption:
+           tag: KEYRING
 
-encryption:
-    tag: KEYRING
+       # encryption:
+       #   tag: GPG
+       #   contents: your-KEY-ID
 
-# encryption:
-#   tag: GPG
-#   contents: your-KEY-ID
+       ## Builtin service providers
+       ## - google
+       ## - microsoft
+       ## Required fields: client_id, client_secret
+       ##
+       services:
+         google:
+           client_id: application-CLIENT-ID 
+           client_secret: application-CLIENT-SECRET
+         ## Alternatively get them from a password manager using a shell command.
+         ## If both variants are present then the _cmd versions get the priority.
+         ## For example:
+         # client_id_cmd: |
+         #   pass email/my-app | head -1
+         # client_secret_cmd: |
+         #   pass email/my-app | head -2 | tail -1
+         #  auth_scope: https://mail.google.com/
 
-## Builtin service providers
-## - google
-## - microsoft
-## Required fields: client_id, client_secret
-##
-services:
-  google:
-    client_id: application-CLIENT-ID 
-    client_secret: application-CLIENT-SECRET
-  #  auth_scope: https://mail.google.com/
+         microsoft:
+            client_id: application-CLIENT-ID 
+         ## client_secret is not needed for device code flow
+         #  auth_endpoint: https://login.microsoftonline.com/common/oauth2/v2.0/devicecode
+         ##
+         ## client_secret might be needed for other authorization flows
+         #  client_secret: application-CLIENT_SECRET
+         ## auth_endpoint: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
+         #   
+         #  auth_scope: https://outlook.office.com/IMAP.AccessAsUser.All
+         #     https://outlook.office.com/SMTP.Send
+         #     offline_access
+         #  tenant: common
 
-  microsoft:
-     client_id: application-CLIENT-ID 
-  ## client_secret is not needed for device code flow
-  #  auth_endpoint: https://login.microsoftonline.com/common/oauth2/v2.0/devicecode
-  ##
-  ## client_secret might be needed for other authorization flows
-  #  client_secret: application-CLIENT_SECRET
-  #  auth_endpoint: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
-  #   
-  #  auth_scope: https://outlook.office.com/IMAP.AccessAsUser.All
-  #     https://outlook.office.com/SMTP.Send
-  #     offline_access
-  #  tenant: common
+         ## User configured providers
+         ## Required fields: client_id, client_secret, auth_endpoint, auth_scope, token_endpoint  
+         ##
+         ## For example:
+         # yahoo:
+         #   client_id: application-CLIENT-ID 
+         #   client_id_cmd: |
+         #     password manager command ...
+         #   client_secret: application-CLIENT_SECRET
+         #   client_secret_cmd: |
+         #     password manager command ...
+         #   auth_endpoint: EDIT-ME!
+         #   auth_scope: EDIT-ME!
+         #   token_endpoint: EDIT-ME!
 
-  ## User configured providers
-  ## Required fields: client_id, client_secret, auth_endpoint, auth_scope, token_endpoint  
-  ##
-  ## For example:
-  # yahoo:
-  #   client_id: application-CLIENT-ID 
-  #   client_secret: application-CLIENT_SECRET
-  #   auth_endpoint: EDIT-ME!
-  #   auth_scope: EDIT-ME!
-  #   token_endpoint: EDIT-ME!
-|]
+       """

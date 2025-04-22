@@ -4,8 +4,9 @@
 
 #ifdef SECRET_LIBS
 
--- Manage secrets using the h-gpgme and gi-secret libraries
+-- | Manage secrets using the h-gpgme and gi-secret libraries
 
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Crypto.Manager
@@ -106,7 +107,7 @@ storeSecret label attribute value secret = do
 
 #else
 
--- Manage secrets using the `gpg` and `secret-tool` utilities.
+-- | Manage secrets using the `gpg` and `secret-tool` utilities.
 
 module Crypto.Manager
   ( decryptFile,

@@ -164,7 +164,7 @@ requestDeviceAuth :: Environment -> String -> IO (Either AuthError DeviceAuthRes
 requestDeviceAuth env serv = do
   api <- getServiceAPI env serv
   let qs =
-        [ ("client_id", Just api.client_id),
+        [ ("client_id", api.client_id),
           ("scope", api.auth_scope),
           ("tenant", api.tenant)
         ]
@@ -242,7 +242,7 @@ renewAccessToken _ _ Nothing = return $ Left $ Unknown "renewAccessToken: Nothin
 renewAccessToken env (Just serv) rft = do
   api <- getServiceAPI env serv
   let qs =
-        [ ("client_id", Just api.client_id),
+        [ ("client_id", api.client_id),
           ("client_secret", api.client_secret),
           ("grant_type", Just "refresh_token"),
           ("refresh_token", rft)
@@ -319,7 +319,7 @@ getAccessToken :: Environment -> String -> String -> String -> IO (Either AuthEr
 getAccessToken env serv redirectURI authcode = do
   api <- getServiceAPI env serv
   let qs =
-        [ ("client_id", Just api.client_id),
+        [ ("client_id", api.client_id),
           ("client_secret", api.client_secret),
           ("code", Just authcode),
           ("grant_type", Just "authorization_code"),
@@ -337,7 +337,7 @@ pollForToken api deviceAuth = do
   let qs =
         [ ("tenant", api.tenant),
           ("grant_type", Just "urn:ietf:params:oauth:grant-type:device_code"),
-          ("client_id", Just api.client_id),
+          ("client_id", api.client_id),
           ("device_code", Just (device_code deviceAuth))
         ]
   let int = fromMaybe 5 $ interval deviceAuth
@@ -366,7 +366,7 @@ generateAuthPage env serv redirectURI email_ noHint = do
   let endpoint = fromJust api.auth_endpoint
       hint = if noHint then "dummy-email-address" else unEmailAddress email_
       qs =
-        [ ("client_id", Just api.client_id),
+        [ ("client_id", api.client_id),
           ("response_type", Just "code"),
           ("scope", api.auth_scope),
           ("login_hint", Just hint),
