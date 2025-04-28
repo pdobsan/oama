@@ -106,7 +106,7 @@ want to keep these parameters in a password manager.
     client_secret_cmd = |
       pass email/my-app | head -1 
 
-Most likely you use one of the methods but if both are present then the
+Presumably you use only one of the methods but if both are present then the
 `*_cmd` variants get the priority.
 
 For institutional accounts your organization should provide the
@@ -233,9 +233,11 @@ which uses FFI to external library API-s to access `keyring` or `gpg` encryption
 services. The other method results in an executable which spawns
 external utilities.
 
-#### Build with library API-s
+There is a `justfile` for building using the
+[just](https://github.com/casey/just) command runner. Invoking `just` without
+arguments lists the available recipes.
 
-    make install-with-libs
+#### Build with library API-s
 
 Dependencies:
 
@@ -243,16 +245,34 @@ Dependencies:
   - `libsecret` Linux package
   - `gobject-introspection` Linux package
 
-#### Build to use external utilities
+Build/install steps:
 
-    make install-with-tools 
+    just secret-libs
+    just build         # optional install invokes it
+    just install
+
+#### Build to use external utilities
 
 Dependencies:
 
   - `gnupg` Linux package
-  - `libsecret` Linux package or `security` utility in macOS
+  - `secret-tool` utility, part of `libsecret` but in Debian a separate package.
+  - `security` utility in macOS.
 
-`oama` will be installed into the `~/.cabal/bin/` directory.
+Build/install steps:
+
+    just secret-tools
+    just build         # optional install invokes it
+    just install
+
+`oama` will be installed into either into `~/.local/bin/` or `~/.cabal/bin/`
+depending on `ghc`-s local setup.
+
+To test `oama` without installing use the `run` recipe. For example:
+
+    just run
+    just run printenv
+    just run 'authorize google johndoe@gmail.com'
 
 ## Issues
 
