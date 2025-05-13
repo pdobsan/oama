@@ -118,7 +118,6 @@ module Crypto.Manager
   )
 where
 
-import Data.String qualified as S
 import System.Directory qualified as D
 import System.Exit (ExitCode (ExitSuccess))
 import System.IO qualified as IO
@@ -201,19 +200,6 @@ lookupSecret attribute value = do
 
 storeSecret :: Label -> Attribute -> Value -> Secret -> IO (Either SecretToolsError String)
 storeSecret label attribute value secret = do
-  let cmd =
-        [ "add-generic-password",
-          "-l",
-          label,
-          "-a",
-          value,
-          "-s",
-          attribute,
-          "-T /usr/bin/security",
-          "-U",
-          "-w",
-          secret
-        ]
   case SI.os of
     "linux" -> do
       P.createProcess
@@ -226,11 +212,21 @@ storeSecret label attribute value secret = do
         (P.proc "security" ["-i"])
           { P.std_in = P.CreatePipe
           }
-        >>= \(h, _, _, p) -> write2Pipe h p (S.unwords cmd)
+        >>= \(h, _, _, p) ->
+          write2Pipe
+            h
+            p
+            ( printf
+                "add-generic-password -l '%s' -a '%s' -s '%s' -T /usr/bin/security -U -w '%s'"
+                label
+                value
+                attribute
+                secret
+            )
     os -> pure $ Left $ StoreError $ printf "Can't work in %s operating system." os
   where
     write2Pipe (Just h) p s = do
-      IO.hPutStr h s
+      IO.hPutStrLn h s
       IO.hFlush h
       IO.hClose h
       x <- P.waitForProcess p
