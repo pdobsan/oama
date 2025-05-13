@@ -171,6 +171,7 @@ data AuthRecord = AuthRecord
 
 data AuthError
   = InvalidGrant
+  | InvalidClient
   | InvalidRequest
   | UnauthorizedClient
   | AccessDenied
@@ -438,7 +439,7 @@ initialConfig =
        ##
        services:
          google:
-           client_id: application-CLIENT-ID 
+           client_id: application-CLIENT-ID
            client_secret: application-CLIENT-SECRET
          ## Alternatively get them from a password manager using a shell command.
          ## If both variants are present then the _cmd versions get the priority.
@@ -450,25 +451,25 @@ initialConfig =
          #  auth_scope: https://mail.google.com/
 
          microsoft:
-            client_id: application-CLIENT-ID 
+            client_id: application-CLIENT-ID
          ## client_secret is not needed for device code flow
          #  auth_endpoint: https://login.microsoftonline.com/common/oauth2/v2.0/devicecode
          ##
          ## client_secret might be needed for other authorization flows
          #  client_secret: application-CLIENT_SECRET
          ## auth_endpoint: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
-         #   
+         #
          #  auth_scope: https://outlook.office.com/IMAP.AccessAsUser.All
          #     https://outlook.office.com/SMTP.Send
          #     offline_access
          #  tenant: common
 
          ## User configured providers
-         ## Required fields: client_id, client_secret, auth_endpoint, auth_scope, token_endpoint  
+         ## Required fields: client_id, client_secret, auth_endpoint, auth_scope, token_endpoint
          ##
          ## For example:
          # yahoo:
-         #   client_id: application-CLIENT-ID 
+         #   client_id: application-CLIENT-ID
          #   client_id_cmd: |
          #     password manager command ...
          #   client_secret: application-CLIENT_SECRET
