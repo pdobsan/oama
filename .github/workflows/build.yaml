@@ -21,5 +21,4 @@ jobs:
           cabal build
       - name: testing
         run:
-          cabal run oama || true
-          cabal run oama -- printenv
+          cabal run oama || cabal run oama -- printenv
