@@ -13,6 +13,7 @@ _clean:
 
 # Configure to build with secret-tools
 secret-tools: _clean
+    cabal configure
 
 # Configure to build with secret-libs
 secret-libs: _clean
@@ -30,6 +31,8 @@ build:
 
 # Run oama without installing it
 run args='--help': build
+    cabal run oama -- {{args}}
+
 install-flags := '--install-method=copy --overwrite-policy=always'
 # Install oama
 install: build
@@ -63,3 +66,7 @@ package: build
     cp -r completions package/$PKGDIR
     cd package
     tar czf $PKGDIR.tar.gz $PKGDIR
+    if  [[ -n "$CI" && -n "$GITHUB_RUN_ID" ]] ; then
+        mv $PKGDIR.tar.gz ..
+        echo "artifactPath=$PKGDIR" >> $GITHUB_ENV
+    fi

@@ -28,18 +28,8 @@ jobs:
         run:
           cabal run oama || cabal run oama -- printenv
       - name: packaging
-        run: |
-          KERNEL=$(uname -s)
-          MACHINE=$(uname -m)
-          OAMA_VERSION=$(awk '/^version:/ {print $2}' oama.cabal)
-          OAMA_BIN=$(cabal list-bin -v0 oama)
-          PKGDIR=oama-$OAMA_VERSION-$KERNEL-$MACHINE
-          echo "artifactPath=$PKGDIR" >> $GITHUB_ENV
-          mkdir -p $PKGDIR
-          cp $OAMA_BIN $PKGDIR
-          cp LICENSE README.md $PKGDIR
-          cp -r configs $PKGDIR
-          cp -r completions $PKGDIR
+        run:
+          just package
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ env.artifactPath }}
