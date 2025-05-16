@@ -6,7 +6,7 @@ jobs:
   build-and-test:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [macos-15-large, macos-15]
     continue-on-error: true
     runs-on: ${{matrix.os}}
     steps:
@@ -17,8 +17,27 @@ jobs:
           cabal-version: latest
       - name: building
         run: |
+          brew install just
           cabal update
-          cabal build
+          just secret-tools
+          just build
       - name: testing
         run:
           cabal run oama || cabal run oama -- printenv
+      - name: packaging
+        run: |
+          KERNEL=$(uname -s)
+          MACHINE=$(uname -m)
+          OAMA_VERSION=$(awk '/^version:/ {print $2}' oama.cabal)
+          OAMA_BIN=$(cabal list-bin -v0 oama)
+          PKGDIR=oama-$OAMA_VERSION-$KERNEL-$MACHINE
+          echo "artifactPath=$PKGDIR" >> $GITHUB_ENV
+          mkdir -p $PKGDIR
+          cp $OAMA_BIN $PKGDIR
+          cp LICENCE README.md $PKGDIR
+          cp -r configs $PKGDIR
+          cp -r completions $PKGDIR
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oama-pkg
+          path: ${{ env.artifactPath }}
