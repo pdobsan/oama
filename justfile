@@ -70,4 +70,5 @@ package: build
     if  [[ -n "$CI" && -n "$GITHUB_RUN_ID" ]] ; then
         mv $PKGDIR.tar.gz ..
         echo "artifactPath=$PKGDIR.tar.gz" >> $GITHUB_ENV
+        echo "artifactName=$PKGDIR" >> $GITHUB_ENV
     fi

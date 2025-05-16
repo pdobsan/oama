@@ -32,6 +32,6 @@ jobs:
           just package
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.artifactPath }}
+          name: ${{ env.artifactName }}
           path: ${{ env.artifactPath }}
           overwrite: true
