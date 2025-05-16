@@ -6,7 +6,7 @@ jobs:
   build-and-test:
     strategy:
       matrix:
-        os: [macos-15-large, macos-15]
+        os: [macos-15, ubuntu-latest]
     continue-on-error: true
     runs-on: ${{matrix.os}}
     steps:
@@ -34,7 +34,7 @@ jobs:
           echo "artifactPath=$PKGDIR" >> $GITHUB_ENV
           mkdir -p $PKGDIR
           cp $OAMA_BIN $PKGDIR
-          cp LICENCE README.md $PKGDIR
+          cp LICENSE README.md $PKGDIR
           cp -r configs $PKGDIR
           cp -r completions $PKGDIR
       - uses: actions/upload-artifact@v4
