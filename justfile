@@ -10,6 +10,7 @@ clean: _clean
 _clean:
     rm -f *.project.local *.project.local~
     rm -f *.project.freeze
+    rm -fr package
 
 # Configure to build with secret-tools
 secret-tools: _clean
@@ -68,5 +69,5 @@ package: build
     tar czf $PKGDIR.tar.gz $PKGDIR
     if  [[ -n "$CI" && -n "$GITHUB_RUN_ID" ]] ; then
         mv $PKGDIR.tar.gz ..
-        echo "artifactPath=$PKGDIR" >> $GITHUB_ENV
+        echo "artifactPath=$PKGDIR.tar.gz" >> $GITHUB_ENV
     fi
