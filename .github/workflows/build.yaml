@@ -1,9 +1,9 @@
 # Refs.: https://github.com/haskell-actions/setup
-name: Build/test oama
+name: Build/test/package oama
 on:
   workflow_dispatch
 jobs:
-  build-and-test:
+  package-oama:
     strategy:
       matrix:
         os: [macos-15, ubuntu-latest]
@@ -15,9 +15,12 @@ jobs:
         with:
           ghc-version: latest
           cabal-version: latest
+      - uses: ConorMacBride/install-package@v1
+        with:
+          brew: just
+          apt: just
       - name: building
         run: |
-          brew install just
           cabal update
           just secret-tools
           just build
@@ -39,5 +42,6 @@ jobs:
           cp -r completions $PKGDIR
       - uses: actions/upload-artifact@v4
         with:
-          name: oama-pkg
+          name: ${{ env.artifactPath }}
           path: ${{ env.artifactPath }}
+          overwrite: true
