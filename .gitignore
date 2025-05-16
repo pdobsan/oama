@@ -26,6 +26,9 @@ mailctl-*-Linux-aarch64.sha256
 # stack
 .stack-work/
 
+# binary packages
+package/
+
 # Python
 # compiled files
 *.pyc

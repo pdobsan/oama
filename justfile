@@ -13,7 +13,6 @@ _clean:
 
 # Configure to build with secret-tools
 secret-tools: _clean
-    cabal configure 
 
 # Configure to build with secret-libs
 secret-libs: _clean
@@ -31,8 +30,6 @@ build:
 
 # Run oama without installing it
 run args='--help': build
-    cabal run oama -- {{args}} 
-    
 install-flags := '--install-method=copy --overwrite-policy=always'
 # Install oama
 install: build
@@ -49,3 +46,20 @@ uninstall:
 trim:
     strip {{bin-dir}}/{{program}}
     upx {{bin-dir}}/{{program}}
+
+# Create a precompiled binary package
+package: build
+    #!/bin/bash
+    KERNEL=$(uname -s)
+    MACHINE=$(uname -m)
+    OAMA_VERSION=$(awk '/^version:/ {print $2}' oama.cabal)
+    OAMA_BIN=$(cabal list-bin -v0 oama)
+    PKGDIR=oama-$OAMA_VERSION-$KERNEL-$MACHINE
+    rm -fr package
+    mkdir -p package/$PKGDIR
+    install -s "$OAMA_BIN" package/$PKGDIR
+    cp LICENSE README.md package/$PKGDIR
+    cp -r configs package/$PKGDIR
+    cp -r completions package/$PKGDIR
+    cd package
+    tar czf $PKGDIR.tar.gz $PKGDIR
