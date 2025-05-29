@@ -68,12 +68,9 @@ getAuthRecord env email_ = do
       >>= \case
         Right o ->
           case eitherDecode' (BLU.fromString o) :: Either String AuthRecord of
-            Left err -> error $ "readAuthRecord:\n" ++ err
+            Left err -> fatalError "getAuthRecord" err
             Right rec -> return rec
-        Left e -> do
-          printf "%s\n" (show e)
-          logger Error (show e)
-          exitFailure
+        Left e -> fatalError "getAuthRecord" (show e)
   getAR (GPG _) = do
     let gpgFile = env.state_dir <> "/" <> email_.unEmailAddress <> ".oama"
     authRecExist <- D.doesFileExist gpgFile
@@ -83,17 +80,13 @@ getAuthRecord env email_ = do
           >>= \case
             Right o -> do
               case eitherDecode' (BLU.fromString o) :: Either String AuthRecord of
-                Left err -> error $ "readAuthRecord:\n" ++ err
+                Left err -> fatalError "getAuthRecord" err
                 Right rec -> return rec
-            Left e -> do
-              printf "%s\n" (show e)
-              logger Error (show e)
-              exitFailure
+            Left e -> fatalError "getAuthRecord" (show e)
       else do
-        printf "Can't find authorization record for %s\n" (unEmailAddress email_)
         printf "You must run `oama authorize ...` before using other operations.\n"
-        logger Error $ printf "Can't find authorization record for %s\n" (unEmailAddress email_)
-        exitFailure
+        fatalError "getAuthRecord" $
+          printf "Can't find authorization record for %s\n" (unEmailAddress email_)
 
 putAuthRecord :: Environment -> EmailAddress -> AuthRecord -> IO ()
 putAuthRecord env email_ rec = do
@@ -130,7 +123,7 @@ getEmailAuth env email_ = do
   getEmailAuth' env email_
     >>= \case
       Right rec -> putStrLn $ access_token rec
-      Left errmsg -> error $ "getEmailAuth:\n" ++ show errmsg
+      Left errmsg -> fatalError "getEmailAuth" $ printf "getEmailAuth: %s" (show errmsg)
 
 getEmailAuth' :: Environment -> EmailAddress -> IO (Either AuthError AuthRecord)
 getEmailAuth' env email_ = do
@@ -259,7 +252,7 @@ forceRenew env email_ = do
   now <- getCurrentTime
   renewAccessToken env (service authrec) (refresh_token authrec)
     >>= \case
-      Left err -> error $ show err
+      Left err -> fatalError "forceRenew" (show err)
       Right newat -> do
         let expire = addUTCTime (expires_in newat - 300) now
             expDate = formatTime defaultTimeLocale timeStampFormat expire
@@ -291,7 +284,7 @@ showCreds env email_ = do
         printf "token_type: %s\n" rec.token_type
         printf "exp_date: %s\n" (fromMaybe "error - missing exp_date" rec.exp_date)
       -- printf "expires_in: %s\n" $ show rec.expires_in
-      Left errmsg -> error $ "showCreds:\n" ++ show errmsg
+      Left errmsg -> fatalError "showCreds" (show errmsg)
 
 -- initial registration for authorization credentials
 
@@ -416,7 +409,7 @@ localWebServer ::
 localWebServer mvar env redirectURI serv email_ noHint = do
   generateAuthPage env serv redirectURI email_ noHint
     >>= \case
-      Left errmsg -> error $ "localWebServer:\n" ++ errmsg
+      Left errmsg -> fatalError "localWebServer" errmsg
       Right authP -> do
         let startAuth :: TW.ResponderM a
             startAuth = case authP of
@@ -432,7 +425,7 @@ localWebServer mvar env redirectURI serv email_ noHint = do
                 >>= \case
                   Left errmsg -> do
                     liftIO $ putMVar mvar AuthFailure
-                    error $ "localWebServer:\n" ++ show errmsg
+                    liftIO $ fatalError "localWebServer" (show errmsg)
                   Right authr -> do
                     liftIO $ storeAuthRecord env serv email_ authr
                     liftIO $ putMVar mvar AuthSuccess
@@ -480,7 +473,7 @@ localWebServer mvar env redirectURI serv email_ noHint = do
 authorizeEmail :: Environment -> String -> EmailAddress -> Bool -> Bool -> IO ()
 authorizeEmail env servName email_ noHint device = do
   case Map.lookup servName env.services of
-    Nothing -> error $ "authorizeEmail: Can't find such service: " ++ servName
+    Nothing -> fatalError "authorizeEmail" (printf "Can't find such service: %s" servName)
     Just _ -> do
       api <- getServiceAPI env servName
       if device
@@ -488,12 +481,12 @@ authorizeEmail env servName email_ noHint device = do
           -- device code flow
           deviceAuthRes <- requestDeviceAuth env servName
           authRes <- case deviceAuthRes of
-            Left err -> error $ "authorizeEmail:\n" ++ show err
+            Left err -> fatalError "authorizeEmail" (show err)
             Right deviceAuth -> do
               printf "Visit:\n%s\n\nand enter the code:\n%s\n" deviceAuth.verification_uri deviceAuth.user_code
               pollForToken api deviceAuth
           case authRes of
-            Left err -> error $ "authorizeEmail:\n" ++ show err
+            Left err -> fatalError "authorizeEmail" (show err)
             Right authr -> storeAuthRecord env servName email_ authr
         else do
           -- auth code flow

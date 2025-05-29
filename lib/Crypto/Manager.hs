@@ -90,7 +90,7 @@ lookupSecret attribute value = do
         return $
           Left $
             LookupError $
-              printf "Can't find secret associated with %s %s\n" attribute value
+              printf "Can't find secret associated with %s %s" attribute value
 
 storeSecret :: Label -> Attribute -> Value -> Secret -> IO (Either SecretToolsError String)
 storeSecret label attribute value secret = do

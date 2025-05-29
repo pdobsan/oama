@@ -24,6 +24,7 @@ module OAMa.Environment (
   pprintEnv,
   printTemplate,
   logger,
+  fatalError,
 )
 where
 
@@ -266,9 +267,7 @@ execCmd (Just cmd) = do
   (x, o, e) <- Proc.readCreateProcessWithExitCode shell ""
   if x == ExitSuccess
     then return (Just $ strip o)
-    else do
-      printf "Failed to execute shell command: %s\n%s\n" cmd e
-      exitFailure
+    else fatalError "execCmd" (printf "Failed to execute shell command: %s\n%s" cmd e)
 execCmd Nothing = pure Nothing
 
 -- | process id/secret_cmd-s in all configured services
@@ -367,12 +366,10 @@ readConfig configFile = do
     then
       (Yaml.decodeFileEither configFile :: IO (Either Yaml.ParseException Configuration))
         >>= \case
-          Left err -> error $ Yaml.prettyPrintParseException err
+          Left err -> fatalError "readConfing" (show $ Yaml.prettyPrintParseException err)
           Right cfg -> return cfg
     else do
-      printf "Can't find/read configuration file: %s\n" configFile
-      logger Error $ printf "Can't find/read configuration file: %s\n" configFile
-      exitFailure
+      fatalError "readConfig" (printf "Can't find/read configuration file: %s" configFile)
 
 pprintEnv :: Environment -> IO ()
 pprintEnv env = do
@@ -394,14 +391,16 @@ getServiceAPI env serv = foo (Map.lookup serv env.services)
  where
   foo :: Maybe ServiceAPI -> IO ServiceAPI
   foo (Just servapi) = return servapi
-  foo Nothing = do
-    printf "ERROR - No service named '%s' is configured.\n" serv
-    printf "        Run`oama printenv` and check its output.\n"
-    logger Error $ printf "ERROR - No service named '%s' is configured.\n" serv
-    exitFailure
+  foo Nothing = fatalError "getServiceAPI" (printf "No service named '%s' is configured." serv)
 
 logger :: Priority -> String -> IO ()
 logger pri msg = withCStringLen msg $ syslog Nothing pri
+
+fatalError :: String -> String -> IO a
+fatalError caller errmsg = do
+  printf "%s: %s\n" caller errmsg
+  logger Error $ printf "%s: %s" caller errmsg
+  exitFailure
 
 printTemplate :: IO ()
 printTemplate = putStr initialConfig
