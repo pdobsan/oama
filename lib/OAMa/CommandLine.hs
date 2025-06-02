@@ -37,7 +37,7 @@ optsParser =
     ( fullDesc
         <> progDesc
           ( "Oama is an OAuth credential manager providing store/lookup, automatic renewal and authorization operations. "
-              ++ "The credentials are stored either in the Gnome keyring or in files encrypted by GnuPG. "
+              ++ "The credentials are stored either by a keyring service or in files encrypted by GnuPG. "
               ++ "Oama is useful for IMAP/SMTP or other network clients which cannot authorize and renew OAuth tokens on their own. "
           )
         <> header "oama - OAuth credential MAnager with store/lookup, renewal, authorization."

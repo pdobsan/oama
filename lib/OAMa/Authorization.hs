@@ -39,6 +39,7 @@ import Network.Socket
 import Network.URI qualified as URI
 import Network.Wai.Handler.Warp qualified as Warp
 import OAMa.Environment
+import OAMa.PKCE qualified as P
 import System.Directory qualified as D
 import System.Exit (exitFailure)
 import System.Posix.Syslog (Priority (..))
@@ -308,13 +309,15 @@ getRandomFreePort = do
   close s -- should be closed just before usage
   return $ read (show p)
 
-getAccessToken :: Environment -> String -> String -> String -> IO (Either AuthError AuthRecord)
-getAccessToken env serv redirectURI authcode = do
+getAccessToken ::
+  Environment -> String -> String -> String -> String -> IO (Either AuthError AuthRecord)
+getAccessToken env serv redirectURI authcode code_verifier = do
   api <- getServiceAPI env serv
   let qs =
         [ ("client_id", api.client_id),
           ("client_secret", api.client_secret),
           ("code", Just authcode),
+          ("code_verifier", Just code_verifier),
           ("grant_type", Just "authorization_code"),
           ("tenant", api.tenant),
           ("redirect_uri", Just redirectURI)
@@ -353,8 +356,15 @@ pollForToken api deviceAuth = do
 data Page = Redirect String | Content BSU.ByteString
 
 generateAuthPage ::
-  Environment -> String -> String -> EmailAddress -> Bool -> IO (Either String Page)
-generateAuthPage env serv redirectURI email_ noHint = do
+  Environment ->
+  String ->
+  String ->
+  P.PKCE ->
+  String ->
+  EmailAddress ->
+  Bool ->
+  IO (Either String Page)
+generateAuthPage env serv redirectURI pkce state email_ noHint = do
   api <- getServiceAPI env serv
   let endpoint = fromJust api.auth_endpoint
       hint = if noHint then "dummy-email-address" else unEmailAddress email_
@@ -365,6 +375,9 @@ generateAuthPage env serv redirectURI email_ noHint = do
           ("login_hint", Just hint),
           ("redirect_uri", Just redirectURI),
           ("access_type", api.access_type),
+          ("code_challenge", Just pkce.code_challenge),
+          ("code_challenge_method", Just pkce.code_challenge_method),
+          ("state", Just state),
           ("prompt", api.prompt)
         ]
   case fromJust api.auth_http_method of
@@ -407,7 +420,9 @@ localWebServer ::
   Bool ->
   IO ()
 localWebServer mvar env redirectURI serv email_ noHint = do
-  generateAuthPage env serv redirectURI email_ noHint
+  pkce <- P.generatePKCE
+  state <- P.generatePKCE >>= \x -> pure x.code_challenge
+  generateAuthPage env serv redirectURI pkce state email_ noHint
     >>= \case
       Left errmsg -> fatalError "localWebServer" errmsg
       Right authP -> do
@@ -421,24 +436,29 @@ localWebServer mvar env redirectURI serv email_ noHint = do
             finishAuth :: TW.ResponderM a
             finishAuth = do
               code :: String <- TW.param "code"
-              liftIO (getAccessToken env serv redirectURI code)
-                >>= \case
-                  Left errmsg -> do
-                    liftIO $ putMVar mvar AuthFailure
-                    liftIO $ fatalError "localWebServer" (show errmsg)
-                  Right authr -> do
-                    liftIO $ storeAuthRecord env serv email_ authr
-                    liftIO $ putMVar mvar AuthSuccess
-                    TW.send $
-                      TW.html $
-                        BLU.fromString $
-                          printf "<h4>Received new refresh and access tokens for %s</h4>" (unEmailAddress email_)
-                            <> if env.config.encryption == KEYRING
-                              then printf "<p>They have been stored in the keyring of your password manager.</p>"
-                              else
-                                printf
-                                  "<p>They have been saved in <samp>%s</samp> encrypted.</p>"
-                                  (env.state_dir <> "/" <> email_.unEmailAddress <> ".oama")
+              state' :: String <- TW.param "state"
+              if state == state'
+                then
+                  liftIO (getAccessToken env serv redirectURI code pkce.code_verifier)
+                    >>= \case
+                      Left errmsg -> do
+                        liftIO $ putMVar mvar AuthFailure
+                        liftIO $ fatalError "localWebServer" (show errmsg)
+                      Right authr -> do
+                        liftIO $ storeAuthRecord env serv email_ authr
+                        liftIO $ putMVar mvar AuthSuccess
+                        TW.send $
+                          TW.html $
+                            BLU.fromString $
+                              printf "<h4>Received new refresh and access tokens for %s</h4>" (unEmailAddress email_)
+                                <> if env.config.encryption == KEYRING
+                                  then printf "<p>They have been stored in the keyring of your password manager.</p>"
+                                  else
+                                    printf
+                                      "<p>They have been saved in <samp>%s</samp> encrypted.</p>"
+                                      (env.state_dir <> "/" <> email_.unEmailAddress <> ".oama")
+                else liftIO $ fatalError "localWebServer" (printf "states don't match: %s /= %s" state state')
+
             casService :: TW.ResponderM a
             casService = do
               casURL :: Text <- TW.param "service"

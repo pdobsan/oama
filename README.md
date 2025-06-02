@@ -17,23 +17,45 @@ ability to renew and/or authorize OAuth2 credentials. The purpose of
 smart password manager. In particular, access token renewal happens
 automatically in the background transparent to the user.
 
-The OAuth2 credentials are kept *encrypted* in a **backend**.
+'oama' runs on Linux, macOS and BSD Unix type systems. Both `x86_64` and `arm64/aarch64`
+platforms are supported.
 
-In Hawaii the word *oama* refers to juvenile goatfish.
+The word *oama* refers to *juvenile goatfish* in Hawaii, see the logo.
 
-### Provided back-end methods
+### Backends and Security
+
+The managed OAuth credentials are kept in various **encrypted backends**.
+'oama' can use any of the backends below:
 
 - [GNU PG](https://www.gnupg.org/) **encrypted files**. These files are kept
   in the `$XDG_STATE_HOME/oama` directory. If the `XDG_STATE_HOME`
   environment variable is not set then it defaults to `$HOME/.local/state`.
 
-- A **keyring service** provided by any password manager with a
+- **Keyrings** provided by any password manager with a
   FreeDesktop.org Secret Service compatible API. *Some examples* of such
   password managers are:
 
     - [Gnome keyring](https://wiki.gnome.org/Projects/GnomeKeyring/)
     - [KDE Wallet Manager](https://apps.kde.org/kwalletmanager5/)
     - [KeePaasXC](https://keepassxc.org/)
+
+Additionally, `oama` can be configured to obtain the *client ID and secret*
+associated with an OAuth account from a password manager so these pieces of
+sensitive information don't need to be in the config file.
+
+#### Operational security
+
+[Proof Key for Code Exchange (PKCE)](https://datatracker.ietf.org/doc/html/rfc7636)
+is used during authorization. Use of PKCE is recommended both
+[by Google](https://developers.google.com/identity/protocols/oauth2/native-app?hl=en)
+and
+[by Microsoft](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow).
+PKCE is required in the
+[new OAuth 2.1 draft](https://www.ietf.org/archive/id/draft-ietf-oauth-v2-1-13.html#name-authorization-code-security).
+
+To avoid CSRF attacks `oama` uses a random `state value` to be maintained during
+the authorization session. Also, as a default, a dynamically generated random
+`redirect_uri` is used so that cannot be leaked through the config file.
 
 ## Usage
 
@@ -45,8 +67,8 @@ available commands:
     Usage: oama [--version] [-c|--config <config>] [--debug] COMMAND
 
       Oama is an OAuth credential manager providing store/lookup, automatic renewal
-      and authorization operations. The credentials are stored either in the Gnome
-      keyring or in files encrypted by GnuPG. Oama is useful for IMAP/SMTP or other
+      and authorization operations. The credentials are stored either by a keyring
+      service or in files encrypted by GnuPG. Oama is useful for IMAP/SMTP or other
       network clients which cannot authorize and renew OAuth tokens on their own.
 
     Available options:
@@ -104,7 +126,7 @@ want to keep these parameters in a password manager.
     client_secret = <my-client-secret>
     # or alternatively get it from a password manager like pass
     client_secret_cmd = |
-      pass email/my-app | head -1 
+      pass email/my-app | head -1
 
 Presumably you use only one of the methods but if both are present then the
 `*_cmd` variants get the priority.
@@ -134,7 +156,7 @@ The default `tenant` for a Microsoft account is `common` which is also
 included in the `auth_endpoint` and `token_endpoint` URLs. If you need to
 use a different `tenant` value then it is enough to specify only the `tenant`
 field the `*_endpoint` URLs will be automatically changed too.
- 
+
 Microsoft now also accepts authorization requests with *device code flow* what
 you can invoke with the `--device` option. In this case you need to provide `client_id`
 only.
@@ -283,7 +305,7 @@ an issue or by starting a discussion.
 
 - Make sure that you are using the latest version of `oama`.
 
-- Before opening an issue search old issues (both open and closed) and check whether 
+- Before opening an issue search old issues (both open and closed) and check whether
   similar problems have been raised or solved before.
 
 - Attach the **complete output of the `oama printenv`** command. Do not
@@ -309,9 +331,8 @@ takes on them.
 
 - [pizauth](https://github.com/ltratt/pizauth)
 
-  
+
 ## License
 
 `oama` is released under the 3-Clause BSD License, see the file
 [License](License).
-
