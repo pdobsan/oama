@@ -17,7 +17,7 @@ ability to renew and/or authorize OAuth2 credentials. The purpose of
 smart password manager. In particular, access token renewal happens
 automatically in the background transparent to the user.
 
-'oama' runs on Linux, macOS and BSD Unix type systems. Both `x86_64` and `arm64/aarch64`
+`oama` runs on Linux, macOS and BSD Unix type systems. Both `x86_64` and `arm64/aarch64`
 platforms are supported.
 
 The word *oama* refers to *juvenile goatfish* in Hawaii, see the logo.
@@ -25,7 +25,7 @@ The word *oama* refers to *juvenile goatfish* in Hawaii, see the logo.
 ### Backends and Security
 
 The managed OAuth credentials are kept in various **encrypted backends**.
-'oama' can use any of the backends below:
+`oama` can use any of the backends below:
 
 - [GNU PG](https://www.gnupg.org/) **encrypted files**. These files are kept
   in the `$XDG_STATE_HOME/oama` directory. If the `XDG_STATE_HOME`
