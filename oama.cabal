@@ -64,6 +64,7 @@ library
     OAMa.Authorization
     OAMa.CommandLine
     OAMa.Environment
+    OAMa.Logging
     OAMa.OpenID
     OAMa.PKCE
 

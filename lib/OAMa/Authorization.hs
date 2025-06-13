@@ -39,6 +39,7 @@ import Network.Socket
 import Network.URI qualified as URI
 import Network.Wai.Handler.Warp qualified as Warp
 import OAMa.Environment
+import OAMa.Logging
 import OAMa.PKCE qualified as P
 import System.Directory qualified as D
 import System.Exit (exitFailure)

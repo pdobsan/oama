@@ -1,10 +1,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultilineStrings #-}
-{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -22,7 +19,7 @@ import Data.Map.Strict qualified as Map
 import GHC.Generics
 import Network.HTTP.Conduit
 import Network.HTTP.Simple
-import OAMa.Environment
+import OAMa.Logging (fatalError)
 import Text.Printf
 
 data OpenIDWellKnown = OpenIDWellKnown

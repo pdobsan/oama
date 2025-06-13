@@ -23,8 +23,6 @@ module OAMa.Environment (
   getServiceAPI,
   pprintEnv,
   printTemplate,
-  logger,
-  fatalError,
 )
 where
 
@@ -47,15 +45,15 @@ import Data.Strings (sReplace, strDrop, strStartsWith)
 import Data.Time.Clock
 import Data.Version (showVersion)
 import Data.Yaml qualified as Yaml
-import Foreign.C.String
 import GHC.Generics
 import OAMa.CommandLine
+import OAMa.Logging
 import Options.Applicative (customExecParser, prefs, showHelpOnEmpty)
 import Paths_oama (version)
 import System.Directory qualified as Dir
 import System.Environment (getEnv, lookupEnv, setEnv)
 import System.Exit (ExitCode (ExitSuccess), exitFailure)
-import System.Posix.Syslog (Priority (..), syslog)
+import System.Posix.Syslog (Priority (..))
 import System.Posix.User (getRealUserID)
 import System.Process qualified as Proc
 import Text.Printf
@@ -392,15 +390,6 @@ getServiceAPI env serv = foo (Map.lookup serv env.services)
   foo :: Maybe ServiceAPI -> IO ServiceAPI
   foo (Just servapi) = return servapi
   foo Nothing = fatalError "getServiceAPI" (printf "No service named '%s' is configured." serv)
-
-logger :: Priority -> String -> IO ()
-logger pri msg = withCStringLen msg $ syslog Nothing pri
-
-fatalError :: String -> String -> IO a
-fatalError caller errmsg = do
-  printf "%s: %s\n" caller errmsg
-  logger Error $ printf "%s: %s" caller errmsg
-  exitFailure
 
 printTemplate :: IO ()
 printTemplate = putStr initialConfig
