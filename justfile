@@ -31,7 +31,7 @@ build:
     fi
 
 # Run oama without installing it
-run args='--help': build
+run +args='--help': build
     cabal run oama -- {{args}}
 
 install-flags := '--install-method=copy --overwrite-policy=always'
