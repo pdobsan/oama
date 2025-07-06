@@ -16,7 +16,6 @@ import Paths_oama (version)
 
 data Opts = Opts
   { optConfig :: !String,
-    optDebug :: !Bool,
     optCommand :: !Command
   }
   deriving (Show, Generic, Yaml.ToJSON, Yaml.FromJSON)
@@ -62,7 +61,6 @@ programOptions =
           <> showDefault
           <> help "Configuration file"
       )
-    <*> switch (long "debug" <> help "Print HTTP traffic to stdout")
     <*> hsubparser (oauth2 <> showcreds <> renew <> authorize <> printEnv <> printTemplate)
 
 oauth2 :: Mod CommandFields Command

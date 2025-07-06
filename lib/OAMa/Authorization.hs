@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NumericUnderscores #-}
@@ -48,11 +47,6 @@ import Text.Pretty.Simple (pPrint, pShowNoColor)
 import Text.Printf (printf)
 import Web.Twain qualified as TW
 
--- #ifdef SECRET_LIBS
--- import Crypto.SecretLibs
--- #else
--- import Crypto.SecretTools
--- #endif
 -- The OAuth2 authorization flow's implementation is based on these docs:
 --
 -- https://developers.google.com/identity/protocols/oauth2/native-app
