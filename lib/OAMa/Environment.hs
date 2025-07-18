@@ -43,13 +43,11 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (fromJust)
 import Data.Strings (sReplace, strDrop, strStartsWith)
 import Data.Time.Clock
-import Data.Version (showVersion)
 import Data.Yaml qualified as Yaml
 import GHC.Generics
 import OAMa.CommandLine
 import OAMa.Logging
 import Options.Applicative (customExecParser, prefs, showHelpOnEmpty)
-import Paths_oama (version)
 import System.Directory qualified as Dir
 import System.Environment (getEnv, lookupEnv, setEnv)
 import System.Exit (ExitCode (ExitSuccess), exitFailure)
@@ -309,7 +307,7 @@ loadEnvironment = do
       setEnv "DBUS_SESSION_BUS_ADDRESS" ("unix:path=/run/user/" ++ show uid ++ "/bus")
   return
     Environment
-      { oama_version = showVersion version,
+      { oama_version = versionInfo,
         op_sys = opsys,
         state_dir = stateDir,
         config_file = configFile,
@@ -397,7 +395,7 @@ printTemplate = putStr initialConfig
 initialConfig :: String
 initialConfig =
   "## oama version "
-    <> showVersion version
+    <> versionInfo
     <> """
 
        ## This is a YAML configuration file, indentation matters.

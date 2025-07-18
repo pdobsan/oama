@@ -6,6 +6,7 @@ module OAMa.CommandLine (
   Opts (..),
   Command (..),
   optsParser,
+  versionInfo,
 ) where
 
 import Data.Version (showVersion)
@@ -13,6 +14,11 @@ import Data.Yaml qualified as Yaml
 import GHC.Generics
 import Options.Applicative
 import Paths_oama (version)
+import Text.Printf
+
+_GIT_STATUS_INFO :: String
+_GIT_STATUS_INFO = "git-hash--123456789012345678901234567890-xxxxx"
+{-# NOINLINE _GIT_STATUS_INFO #-}
 
 data Opts = Opts
   { optConfig :: !String,
@@ -42,13 +48,16 @@ optsParser =
         <> header "oama - OAuth credential MAnager with store/lookup, renewal, authorization."
     )
 
+versionInfo :: String
+versionInfo = showVersion version <> printf " - %s" _GIT_STATUS_INFO
+
 versionOption :: Parser (a -> a)
 versionOption = do
   let verinfo =
         "oama version "
-          <> showVersion version
+          <> versionInfo
           <> "\nCopyright (c) 2022-2025, Peter Dobsan"
-  infoOption verinfo (long "version" <> help "Show version")
+  infoOption verinfo (long "version" <> short 'V' <> help "Show version")
 
 programOptions :: Parser Opts
 programOptions =

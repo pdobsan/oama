@@ -13,15 +13,36 @@ _clean:
     rm -fr package
 
 # Configure to build with secret-tools
-secret-tools: _clean
+secret-tools: clean
     cabal configure
 
 # Configure to build with secret-libs
-secret-libs: _clean
+secret-libs: clean
     cabal configure -fsecret-libs
 
+# replace _GIT_STATUS_INFO string in built executable
+_replace-git-hash oama_bin:
+    #!/bin/bash -x
+    # GIT_HASH=$(jj show -r @ | awk '/^Commit ID:/ {print $3}')
+    GIT_HASH=$(git rev-parse HEAD)
+    if [[ -n "$(git status --porcelain)" ]]
+    then
+        # repo is dirty
+        STATUS="dirty"
+    else
+        # repo is clean
+        STATUS="clean"
+    fi
+    sed -i s/git-hash--123456789012345678901234567890-xxxxx/$GIT_HASH\ $STATUS/g {{oama_bin}}
+
 # Build oama according to last configuration
-build:
+build: _build
+    #!/bin/bash -x
+    # OAMA_BIN=$(cabal list-bin -v0 oama)
+    OAMA_BIN=$(cabal list-bin -v0 oama)
+    just _replace-git-hash $OAMA_BIN
+
+_build:
     #!/usr/bin/env bash
     if [ -f cabal.project.local ]; then
         cabal build
@@ -34,26 +55,28 @@ build:
 run +args='--help': build
     cabal run oama -- {{args}}
 
+bin-dir := "~/.local/bin"
+program := "oama"
 install-flags := '--install-method=copy --overwrite-policy=always'
+
 # Install oama
 install: build
     cabal install {{install-flags}}
-
-bin-dir := "~/.local/bin"
-program := "oama"
+    just _replace-git-hash {{bin-dir}}/{{program}}
+    just _trim {{bin-dir}}/{{program}}
 
 # Remove installed oama
 uninstall:
     rm -f {{bin-dir}}/{{program}}
 
-# Run strip and upx on the installed oama
-trim:
-    strip {{bin-dir}}/{{program}}
-    upx {{bin-dir}}/{{program}}
+# Run strip and upx on prog
+_trim prog:
+    -strip {{prog}}
+    -upx {{prog}}
 
 # Create a precompiled binary package
 package: build
-    #!/bin/bash
+    #!/bin/bash -xe
     KERNEL=$(uname -s)
     MACHINE=$(uname -m)
     OAMA_VERSION=$(awk '/^version:/ {print $2}' oama.cabal)
@@ -61,7 +84,9 @@ package: build
     PKGDIR=oama-$OAMA_VERSION-$KERNEL-$MACHINE
     rm -fr package
     mkdir -p package/$PKGDIR
-    install -s "$OAMA_BIN" package/$PKGDIR
+    install "$OAMA_BIN" package/$PKGDIR
+    just _replace-git-hash package/$PKGDIR/oama
+    just _trim package/$PKGDIR/oama
     cp LICENSE README.md package/$PKGDIR
     cp -r configs package/$PKGDIR
     cp -r completions package/$PKGDIR
