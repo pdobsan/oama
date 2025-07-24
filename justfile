@@ -33,12 +33,11 @@ _replace-git-hash oama_bin:
         # repo is clean
         STATUS="clean"
     fi
-    sed -i s/git-hash--123456789012345678901234567890-xxxxx/$GIT_HASH\ $STATUS/g {{oama_bin}}
+    perl -pi -e s/git-hash--123456789012345678901234567890-xxxxx/$GIT_HASH\ $STATUS/g {{oama_bin}}
 
 # Build oama according to last configuration
 build: _build
     #!/bin/bash -x
-    # OAMA_BIN=$(cabal list-bin -v0 oama)
     OAMA_BIN=$(cabal list-bin -v0 oama)
     just _replace-git-hash $OAMA_BIN
 
@@ -55,19 +54,19 @@ _build:
 run +args='--help': build
     cabal run oama -- {{args}}
 
-bin-dir := "~/.local/bin"
-program := "oama"
 install-flags := '--install-method=copy --overwrite-policy=always'
 
 # Install oama
 install: build
+    #!/bin/bash -x
     cabal install {{install-flags}}
-    just _replace-git-hash {{bin-dir}}/{{program}}
-    just _trim {{bin-dir}}/{{program}}
+    OAMA=$(which oama)
+    just _replace-git-hash $OAMA
+    just _trim $OAMA
 
 # Remove installed oama
 uninstall:
-    rm -f {{bin-dir}}/{{program}}
+    rm -f $(which oama)
 
 # Run strip and upx on prog
 _trim prog:
