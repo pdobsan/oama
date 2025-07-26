@@ -107,7 +107,8 @@ storeSecret label attribute value secret = do
 
 #else
 
--- | Manage secrets using the `gpg` and `secret-tool` utilities.
+-- | Manage secrets using `gpg` and `secret-tool` on Linux/Unix
+-- and `security` on macOS.
 
 module Crypto.Manager
   ( decryptFile,
@@ -209,21 +210,18 @@ storeSecret label attribute value secret = do
           }
         >>= \(h, _, _, p) -> write2Pipe h p secret
     "darwin" -> do
-      P.createProcess
-        (P.proc "security" ["-i"])
-          { P.std_in = P.CreatePipe
-          }
-        >>= \(h, _, _, p) ->
-          write2Pipe
-            h
-            p
-            ( printf
-                "add-generic-password -l '%s' -a '%s' -s '%s' -T /usr/bin/security -U -w '%s'"
-                label
-                value
-                attribute
-                secret
-            )
+      P.readProcessWithExitCode
+        "security"
+        ["add-generic-password",
+         "-l", label,
+         "-a", value,
+         "-s", attribute,
+         "-T", "/usr/bin/security",
+         "-U",
+         "-w", secret
+        ]
+        ""
+        >>= result
     os -> pure $ Left $ StoreError $ printf "Can't work in %s operating system." os
   where
     write2Pipe (Just h) p s = do
@@ -236,5 +234,9 @@ storeSecret label attribute value secret = do
         else pure $ Left $ StoreError "Storing secret failed."
     write2Pipe Nothing _ _ = do
       pure $ Left $ StoreError $ printf "Failed to get handle to pipe."
+    result (x, o, e) =
+      if x == ExitSuccess
+        then pure $ Right o
+        else pure $ Left $ LookupError e
 
 #endif
