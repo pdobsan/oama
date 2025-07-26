@@ -237,6 +237,6 @@ storeSecret label attribute value secret = do
     result (x, o, e) =
       if x == ExitSuccess
         then pure $ Right o
-        else pure $ Left $ LookupError e
+        else pure $ Left $ StoreError e
 
 #endif
