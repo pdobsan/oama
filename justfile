@@ -12,13 +12,17 @@ _clean:
     rm -f *.project.freeze
     rm -fr package
 
-# Configure to build with secret-tools
-secret-tools: clean
-    cabal configure
+# Configure to build a fully static executable (in alpine only)
+config-static: clean
+    cabal configure --enable-executable-static
 
-# Configure to build with secret-libs
-secret-libs: clean
-    cabal configure -fsecret-libs
+# Configure to build with gpgme lib API
+config-gpgme: clean
+    cabal configure -flib-gpgme
+
+# Configure to build with gi-secret lib API
+config-gisecret: clean
+    cabal configure -flib-gisecret
 
 # replace _GIT_STATUS_INFO string in built executable
 _replace-git-hash oama_bin:
@@ -42,13 +46,7 @@ build: _build
     just _replace-git-hash $OAMA_BIN
 
 _build:
-    #!/usr/bin/env bash
-    if [ -f cabal.project.local ]; then
-        cabal build
-    else
-        echo Run one of secret_libs or secret-tools recipe first!
-        exit 1
-    fi
+    cabal build
 
 # Run oama without installing it
 run +args='--help': build
@@ -57,7 +55,7 @@ run +args='--help': build
 install-flags := '--install-method=copy --overwrite-policy=always'
 
 # Install oama
-install: build
+install: _build
     #!/bin/bash -x
     cabal install {{install-flags}}
     OAMA=$(which oama)

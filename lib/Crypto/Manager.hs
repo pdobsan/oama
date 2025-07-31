@@ -2,10 +2,6 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-#ifdef SECRET_LIBS
-
--- | Manage secrets using the h-gpgme and gi-secret libraries
-
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -15,123 +11,37 @@ module Crypto.Manager
     lookupSecret,
     storeSecret,
     secretMethod,
-    SecretToolsError (..),
   )
 where
 
+#ifdef LIB_GPGME
 import Crypto.Gpgme
 import Data.ByteString qualified as BS
 import Data.ByteString.UTF8 qualified as BSU
-import Data.Map qualified as Map
 import Data.Maybe
-import Data.Text qualified as Text
+import System.Environment
+#endif
+#ifdef LIB_GISECRET
+import Data.Map qualified as Map
 import GI.Gio qualified as Gio
 import GI.Secret.Functions qualified as GIS
-import System.Directory qualified as D
-import System.Environment
-import Text.Printf (printf)
-
-type KeyID = String
-
-type Secret = String
-
-data SecretToolsError
-  = FileError String
-  | DecryptError String
-  | EncryptError String
-  | LookupError String
-  | StoreError String
-  deriving (Show)
-
-secretMethod :: String
-secretMethod = "secret-libs"
-
-decryptFile :: FilePath -> IO (Either SecretToolsError Secret)
-decryptFile f = do
-  fOk <- D.doesFileExist f
-  if fOk
-    then do
-      gpgHome <- getEnv "HOME" >>= \x -> pure (x ++ "/.gnupg")
-      enc <- BS.readFile f
-      withCtx gpgHome "C" OpenPGP $ \ctx ->
-        decrypt ctx enc
-          >>= \case
-            Left err -> return $ Left $ DecryptError (show err)
-            Right o -> return $ Right (BSU.toString o)
-    else pure $ Left $ FileError $ printf "Can't open file: %s" f
-
-encryptFile :: FilePath -> Secret -> KeyID -> IO (Either SecretToolsError String)
-encryptFile f s k = do
-  gpgHome <- getEnv "HOME" >>= \x -> pure (x ++ "/.gnupg")
-  withCtx gpgHome "C" OpenPGP $ \ctx -> do
-    key <- getKey ctx (BSU.fromString k) NoSecret
-    encrypt ctx [fromJust key] NoFlag (BSU.fromString s)
-      >>= \case
-        Right enc -> do
-          BS.writeFile f enc
-          pure $ Right "gpg encryption succeded."
-        Left err -> return $ Left $ EncryptError (show err)
-
-type Attribute = String
-
-type Value = String
-
-type Label = String
-
-lookupSecret :: Attribute -> Value -> IO (Either SecretToolsError String)
-lookupSecret attribute value = do
-  GIS.passwordLookupSync
-    Nothing
-    (Map.fromList [(Text.pack attribute, Text.pack value)])
-    (Nothing @Gio.Cancellable)
-    >>= \case
-      Just o -> return $ Right (Text.unpack o)
-      Nothing ->
-        return $
-          Left $
-            LookupError $
-              printf "Can't find secret associated with %s %s" attribute value
-
-storeSecret :: Label -> Attribute -> Value -> Secret -> IO (Either SecretToolsError String)
-storeSecret label attribute value secret = do
-  -- TODO check retun status
-  _ <-
-    GIS.passwordStoreSync
-      Nothing
-      (Map.fromList [(Text.pack attribute, Text.pack value)])
-      Nothing
-      (Text.pack label)
-      (Text.pack secret)
-      (Nothing @Gio.Cancellable)
-  return $ Right "storing secret succeded."
-
+import Data.Text qualified as Text
 #else
-
--- | Manage secrets using `gpg` and `secret-tool` on Linux/Unix
--- and `security` on macOS.
-
-module Crypto.Manager
-  ( decryptFile,
-    encryptFile,
-    lookupSecret,
-    storeSecret,
-    secretMethod,
-    SecretToolsError (..),
-  )
-where
-
+import System.Info qualified as SI
+#endif
 import System.Directory qualified as D
+import Text.Printf (printf)
+#if !defined(LIB_GPGME) || !defined(LIB_GISECRET)
 import System.Exit (ExitCode (ExitSuccess))
 import System.IO qualified as IO
-import System.Info qualified as SI
 import System.Process qualified as P
-import Text.Printf (printf)
+#endif
 
 type KeyID = String
 
 type Secret = String
 
-data SecretToolsError
+data SecretError
   = FileError String
   | DecryptError String
   | EncryptError String
@@ -140,9 +50,14 @@ data SecretToolsError
   deriving (Show)
 
 secretMethod :: String
-secretMethod = "secret-tools"
+secretMethod = gpgMethod <> " " <> ringMethod
 
-decryptFile :: FilePath -> IO (Either SecretToolsError Secret)
+#ifndef LIB_GPGME
+
+gpgMethod :: String
+gpgMethod = "gpg"
+
+decryptFile :: FilePath -> IO (Either SecretError Secret)
 decryptFile f = do
   -- check gpg environment
   fOk <- D.doesFileExist f
@@ -155,7 +70,7 @@ decryptFile f = do
           pure $ Left $ DecryptError e
     else pure $ Left $ FileError $ printf "Can't open file: %s" f
 
-encryptFile :: FilePath -> Secret -> KeyID -> IO (Either SecretToolsError String)
+encryptFile :: FilePath -> Secret -> KeyID -> IO (Either SecretError String)
 encryptFile f s k = do
   (Just h, _, _, p) <-
     P.createProcess
@@ -172,13 +87,53 @@ encryptFile f s k = do
       pure $ Right "gpg encryption succeded."
     else pure $ Left $ EncryptError "gpg encryption failed."
 
+#endif
+
+#ifdef LIB_GPGME
+
+gpgMethod :: String
+gpgMethod = "lib-gpgme"
+
+decryptFile :: FilePath -> IO (Either SecretError Secret)
+decryptFile f = do
+  fOk <- D.doesFileExist f
+  if fOk
+    then do
+      gpgHome <- getEnv "HOME" >>= \x -> pure (x ++ "/.gnupg")
+      enc <- BS.readFile f
+      withCtx gpgHome "C" OpenPGP $ \ctx ->
+        decrypt ctx enc
+          >>= \case
+            Left err -> return $ Left $ DecryptError (show err)
+            Right o -> return $ Right (BSU.toString o)
+    else pure $ Left $ FileError $ printf "Can't open file: %s" f
+
+encryptFile :: FilePath -> Secret -> KeyID -> IO (Either SecretError String)
+encryptFile f s k = do
+  gpgHome <- getEnv "HOME" >>= \x -> pure (x ++ "/.gnupg")
+  withCtx gpgHome "C" OpenPGP $ \ctx -> do
+    key <- getKey ctx (BSU.fromString k) NoSecret
+    encrypt ctx [fromJust key] NoFlag (BSU.fromString s)
+      >>= \case
+        Right enc -> do
+          BS.writeFile f enc
+          pure $ Right "gpg encryption succeded."
+        Left err -> return $ Left $ EncryptError (show err)
+
+#endif
+
 type Attribute = String
 
 type Value = String
 
 type Label = String
 
-lookupSecret :: Attribute -> Value -> IO (Either SecretToolsError String)
+#ifndef LIB_GISECRET
+
+ringMethod :: String
+ringMethod = "secret-tool/security"
+
+lookupSecret :: Attribute -> Value -> IO (Either SecretError String)
 lookupSecret attribute value = do
   case SI.os of
     "linux" ->
@@ -200,7 +155,7 @@ lookupSecret attribute value = do
         then pure $ Right o
         else pure $ Left $ LookupError e
 
-storeSecret :: Label -> Attribute -> Value -> Secret -> IO (Either SecretToolsError String)
+storeSecret :: Label -> Attribute -> Value -> Secret -> IO (Either SecretError String)
 storeSecret label attribute value secret = do
   case SI.os of
     "linux" -> do
@@ -238,5 +193,39 @@ storeSecret label attribute value secret = do
       if x == ExitSuccess
         then pure $ Right o
         else pure $ Left $ StoreError e
+
+#endif
+
+#ifdef LIB_GISECRET
+
+ringMethod :: String
+ringMethod = "lib-gi-secret"
+
+lookupSecret :: Attribute -> Value -> IO (Either SecretError String)
+lookupSecret attribute value = do
+  GIS.passwordLookupSync
+    Nothing
+    (Map.fromList [(Text.pack attribute, Text.pack value)])
+    (Nothing @Gio.Cancellable)
+    >>= \case
+      Just o -> return $ Right (Text.unpack o)
+      Nothing ->
+        return $
+          Left $
+            LookupError $
+              printf "Can't find secret associated with %s %s" attribute value
+
+storeSecret :: Label -> Attribute -> Value -> Secret -> IO (Either SecretError String)
+storeSecret label attribute value secret = do
+  -- TODO check retun status
+  _ <-
+    GIS.passwordStoreSync
+      Nothing
+      (Map.fromList [(Text.pack attribute, Text.pack value)])
+      Nothing
+      (Text.pack label)
+      (Text.pack secret)
+      (Nothing @Gio.Cancellable)
+  return $ Right "storing secret succeded."
 
 #endif

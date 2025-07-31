@@ -8,8 +8,13 @@ maintainer:         pdobsan@gmail.com
 extra-source-files:
 data-files:
 
-flag secret-libs
-  description: Use the libsecret and gpgme API-s
+flag lib-gpgme
+  description: Use the gpgme API-s
+  default: False
+  manual: True
+
+flag lib-gisecret
+  description: Use the gi-secret API-s
   default: False
   manual: True
 
@@ -43,12 +48,15 @@ common common
     utf8-string,
     warp,
     yaml,
-  if flag(secret-libs)
-    cpp-options: -DSECRET_LIBS
+  if flag(lib-gpgme)
+    cpp-options: -DLIB_GPGME
+    build-depends:
+      h-gpgme,
+  if flag(lib-gisecret)
+    cpp-options: -DLIB_GISECRET
     build-depends:
       gi-gio,
       gi-secret,
-      h-gpgme,
 
   ghc-options:
     -Wall

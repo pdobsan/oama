@@ -64,7 +64,7 @@ available commands:
 
     oama - OAuth credential MAnager with store/lookup, renewal, authorization.
 
-    Usage: oama [--version] [-c|--config <config>] [--debug] COMMAND
+    Usage: oama [-V|--version] [-c|--config <config>] COMMAND
 
       Oama is an OAuth credential manager providing store/lookup, automatic renewal
       and authorization operations. The credentials are stored either by a keyring
@@ -73,10 +73,9 @@ available commands:
 
     Available options:
       -h,--help                Show this help text
-      --version                Show version
+      -V,--version             Show version
       -c,--config <config>     Configuration file
                                (default: "~/.config/oama/config.yaml")
-      --debug                  Print HTTP traffic to stdout
 
     Available commands:
       access                   Get the access token for email
@@ -157,7 +156,7 @@ included in the `auth_endpoint` and `token_endpoint` URLs. If you need to
 use a different `tenant` value then it is enough to specify only the `tenant`
 field the `*_endpoint` URLs will be automatically changed too.
 
-Microsoft now also accepts authorization requests with *device code flow* what
+Microsoft now primarily expects authorization requests with *device code flow* what
 you can invoke with the `--device` option. In this case you need to provide `client_id`
 only.
 
@@ -165,7 +164,7 @@ only.
 
 Invoke `oama` using your proper organizational email:
 
-    oama authorize microsoft <you@company.email>
+    oama authorize microsoft <you@company.email> --device
 
 Then visit the `http://localhost:<portnumber>/start` page to perform the steps
 below:
@@ -240,73 +239,70 @@ For Archlinux users there is also a package on AUR:
 
 ### Building from sources
 
+Additionally to this GitHub repository the source code is also mirrored at
+[Sourcehut](https://git.sr.ht/~petrus/oama).
+
 To build `oama` from source you need a Haskell development environment,
-with `ghc 9.4.x` or higher. Either your platform's package system can provide
-this or you can use [ghcup](https://www.haskell.org/ghcup/). Once you have
-the `ghc` Haskell compiler and `cabal` etc. installed, follow the steps
-below:
-
-    git clone https://github.com/pdobsan/oama
-    cd oama
-    cabal update
-
-There are two alternative methods to build `oama`. One results in an executable
-which uses FFI to external library API-s to access `keyring` or `gpg` encryption
-services. The other method results in an executable which spawns
-external utilities.
+with `ghc 9.8.x` or higher. Either your platform's package system can provide
+this or you can use [ghcup](https://www.haskell.org/ghcup/).
 
 There is a `justfile` for building using the
 [just](https://github.com/casey/just) command runner. Invoking `just` without
 arguments lists the available recipes.
 
-#### Build with library API-s
+The default way to build and install `oama`:
 
-Dependencies:
-
-  - `gpgme` Linux package
-  - `libsecret` Linux package
-  - `gobject-introspection` Linux package
-
-Build/install steps:
-
-    just secret-libs
-    just build         # optional install invokes it
-    just install
-
-#### Build to use external utilities
-
-Dependencies:
-
-  - `gnupg` Linux package
-  - `secret-tool` utility, part of `libsecret` but in Debian a separate package.
-  - `security` utility in macOS.
-
-Build/install steps:
-
-    just secret-tools
+    git clone https://github.com/pdobsan/oama
+    # or git clone https://git.sr.ht/~petrus/oama
+    cd oama
+    cabal update
     just build         # optional install invokes it
     just install
 
 `oama` will be installed into either into `~/.local/bin/` or `~/.cabal/bin/`
 depending on `ghc`-s local setup.
 
+Dependencies for the default build:
+
+  - `gnupg` Linux package
+  - `secret-tool` utility, part of `libsecret` but in Debian a separate package.
+  - `security` utility in macOS.
+
+There are alternative methods to build `oama`. The default, without any specific
+configuration as above, provides an executable which spawns external utilities
+to manage secrets.
+
+To use a FFI to an external library API to access `keyring` or `gpg` encryption
+services you need to run a `config-...` recipe before the `build` step. For example:
+
+    just config-gisecret
+    just build
+
+Dependencies for using library API-s:
+
+  - `gpgme` Linux package
+  - `libsecret` Linux package
+  - `gobject-introspection` Linux package
+
 To test `oama` without installing use the `run` recipe. For example:
 
     just run
     just run printenv
-    just run 'authorize google johndoe@gmail.com'
+    just run authorize google johndoe@gmail.com
 
 ## Issues
 
-Please, report any problems, questions, suggestions regarding `oama` by opening
-an issue or by starting a discussion.
+Please, report any problems, questions, suggestions regarding `oama`
+by opening an issue. Alternatively, send a mail to the
+[oama mailing list](mailto:~petrus/oama@lists.sr.ht), no subscription necessary.
 
 ### Guidelines for opening an issue
 
 - Make sure that you are using the latest version of `oama`.
 
-- Before opening an issue search old issues (both open and closed) and check whether
-  similar problems have been raised or solved before.
+- Before opening an issue search [previous issues](https://github.com/pdobsan/oama/issues)
+ (both open and closed) and the [oama mailing list](https://lists.sr.ht/~petrus/oama).
+ Check whether similar problems have been raised or solved before.
 
 - Attach the **complete output of the `oama printenv`** command. Do not
   remove lines, get confidential values redacted by replacing them with
