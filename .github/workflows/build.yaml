@@ -1,7 +1,6 @@
 # Refs.: https://github.com/haskell-actions/setup
 name: Build/test/package oama
-on:
-  workflow_dispatch
+on: workflow_dispatch
 jobs:
   package-oama:
     strategy:
@@ -22,14 +21,11 @@ jobs:
       - name: building
         run: |
           cabal update
-          just secret-tools
           just build
       - name: testing
-        run:
-          cabal run oama || cabal run oama -- printenv
+        run: cabal run oama || cabal run oama -- printenv
       - name: packaging
-        run:
-          just package
+        run: just package
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ env.artifactName }}
