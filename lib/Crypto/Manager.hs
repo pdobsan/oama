@@ -1,17 +1,16 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ImportQualifiedPost #-}
-{-# LANGUAGE OverloadedStrings #-}
-
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Crypto.Manager
-  ( decryptFile,
-    encryptFile,
-    lookupSecret,
-    storeSecret,
-    secretMethod,
-  )
+module Crypto.Manager (
+  decryptFile,
+  encryptFile,
+  lookupSecret,
+  storeSecret,
+  secretMethod,
+)
 where
 
 #ifdef LIB_GPGME

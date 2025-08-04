@@ -28,6 +28,7 @@ common common
     containers,
     cryptohash-sha256,
     directory,
+    githash,
     hsyslog,
     http-conduit,
     http-types,

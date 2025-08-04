@@ -24,28 +24,8 @@ config-gpgme: clean
 config-gisecret: clean
     cabal configure -flib-gisecret
 
-# replace _GIT_STATUS_INFO string in built executable
-_replace-git-hash oama_bin:
-    #!/bin/bash -x
-    # GIT_HASH=$(jj show -r @ | awk '/^Commit ID:/ {print $3}')
-    GIT_HASH=$(git rev-parse HEAD)
-    if [[ -n "$(git status --porcelain)" ]]
-    then
-        # repo is dirty
-        STATUS="dirty"
-    else
-        # repo is clean
-        STATUS="clean"
-    fi
-    perl -pi -e s/git-hash--123456789012345678901234567890-xxxxx/$GIT_HASH\ $STATUS/g {{oama_bin}}
-
 # Build oama according to last configuration
-build: _build
-    #!/bin/bash -x
-    OAMA_BIN=$(cabal list-bin -v0 oama)
-    just _replace-git-hash $OAMA_BIN
-
-_build:
+build:
     cabal build
 
 # Run oama without installing it
@@ -55,11 +35,10 @@ run +args='--help': build
 install-flags := '--install-method=copy --overwrite-policy=always'
 
 # Install oama
-install: _build
+install: build
     #!/bin/bash -x
     cabal install {{install-flags}}
     OAMA=$(which oama)
-    just _replace-git-hash $OAMA
     just _trim $OAMA
 
 # Remove installed oama
@@ -82,7 +61,6 @@ package: build
     rm -fr package
     mkdir -p package/$PKGDIR
     install "$OAMA_BIN" package/$PKGDIR
-    just _replace-git-hash package/$PKGDIR/oama
     just _trim package/$PKGDIR/oama
     cp LICENSE README.md package/$PKGDIR
     cp -r configs package/$PKGDIR

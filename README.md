@@ -243,7 +243,7 @@ Additionally to this GitHub repository the source code is also mirrored at
 [Sourcehut](https://git.sr.ht/~petrus/oama).
 
 To build `oama` from source you need a Haskell development environment,
-with `ghc 9.8.x` or higher. Either your platform's package system can provide
+with `ghc 9.12.1` or higher. Either your platform's package system can provide
 this or you can use [ghcup](https://www.haskell.org/ghcup/).
 
 There is a `justfile` for building using the

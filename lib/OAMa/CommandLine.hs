@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module OAMa.CommandLine (
   Opts (..),
@@ -9,16 +10,31 @@ module OAMa.CommandLine (
   versionInfo,
 ) where
 
+import Data.Time.Clock.POSIX qualified as TCP
+import Data.Time.Format qualified as TF
 import Data.Version (showVersion)
 import Data.Yaml qualified as Yaml
 import GHC.Generics
+import GitHash
 import Options.Applicative
 import Paths_oama (version)
 import Text.Printf
 
+gi :: GitInfo
+gi = $$tGitInfoCwd
+
 _GIT_STATUS_INFO :: String
-_GIT_STATUS_INFO = "git-hash--123456789012345678901234567890-xxxxx"
-{-# NOINLINE _GIT_STATUS_INFO #-}
+_GIT_STATUS_INFO =
+  printf
+    "%s.%04d.%s%s"
+    ( TF.formatTime
+        TF.defaultTimeLocale
+        "%Y_%m_%d"
+        (TCP.posixSecondsToUTCTime (fromIntegral (giCommitTime gi)))
+    )
+    (giCommitCount gi)
+    (take 8 (giHash gi))
+    (if giDirty gi then " dirty" else "")
 
 data Opts = Opts
   { optConfig :: !String,
