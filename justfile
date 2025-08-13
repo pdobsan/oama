@@ -36,8 +36,10 @@ install-flags := '--install-method=copy --overwrite-policy=always'
 
 # Install oama
 install: build
-    #!/bin/bash -x
-    cabal install {{install-flags}}
+    #!/bin/bash -ex
+    # cabal install {{install-flags}}
+    OAMA_BIN=$(cabal list-bin -v0 oama)
+    install "$OAMA_BIN" ~/.local/bin
     OAMA=$(which oama)
     just _trim $OAMA
 
