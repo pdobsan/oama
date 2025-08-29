@@ -26,10 +26,10 @@ gi = $$tGitInfoCwd
 _GIT_STATUS_INFO :: String
 _GIT_STATUS_INFO =
   printf
-    "%s.%04d.%s%s"
+    "%s %04d.%s%s"
     ( TF.formatTime
         TF.defaultTimeLocale
-        "%Y_%m_%d"
+        "%Y-%m-%d"
         (TCP.posixSecondsToUTCTime (fromIntegral (giCommitTime gi)))
     )
     (giCommitCount gi)

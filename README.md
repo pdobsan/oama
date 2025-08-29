@@ -259,9 +259,6 @@ The default way to build and install `oama`:
     just build         # optional install invokes it
     just install
 
-`oama` will be installed into either into `~/.local/bin/` or `~/.cabal/bin/`
-depending on `ghc`-s local setup.
-
 Dependencies for the default build:
 
   - `gnupg` Linux package

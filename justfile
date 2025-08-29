@@ -1,30 +1,37 @@
 # List available recipes
 _default:
-    @just --list
+    @just --list -u
 
-# Clean
-clean: _clean
+# Run cabal clean then remove .local and .freeze files
+clean:
     cabal clean
-
-# Clean ghc/cabal configs
-_clean:
     rm -f *.project.local *.project.local~
     rm -f *.project.freeze
     rm -fr package
 
-# Configure to build a fully static executable (in alpine only)
-config-static: clean
-    cabal configure --enable-executable-static
+# Show current project configs
+show-project-configs:
+    @echo === cabal.project ===
+    -@cat cabal.project
+    @echo === cabal.project.local ===
+    -@cat cabal.project.local
 
-# Configure to build with gpgme lib API
-config-gpgme: clean
-    cabal configure -flib-gpgme
+# Configure to build a fully static executable (in alpine only)
+config-static:
+    cabal configure --enable-append --enable-executable-static
+    just show-project-configs
 
 # Configure to build with gi-secret lib API
-config-gisecret: clean
-    cabal configure -flib-gisecret
+config-gisecret:
+    cabal configure --enable-append -flib-gisecret
+    just show-project-configs
 
-# Build oama according to last configuration
+# Configure to build with gpgme lib API
+config-gpgme:
+    cabal configure --enable-append -flib-gpgme
+    just show-project-configs
+
+# Build oama according to current configuration
 build:
     cabal build
 
@@ -34,7 +41,7 @@ run +args='--help': build
 
 install-flags := '--install-method=copy --overwrite-policy=always'
 
-# Install oama
+# Install oama into ~/.local/bin
 install: build
     #!/bin/bash -ex
     # cabal install {{install-flags}}
